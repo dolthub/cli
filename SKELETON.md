@@ -171,7 +171,7 @@ dolthub_cli/
 
 Packages and files should only be created in the phase that needs them. Empty placeholder packages are discouraged.
 
-The module path must be selected before Phase 1 implementation. Until a canonical repository is chosen, examples in this document use `github.com/dolthub/dh` as the proposed module path.
+The canonical module path is `github.com/dolthub/cli`, matching this repository's GitHub location.
 
 ## 6. Core contracts
 
@@ -385,7 +385,7 @@ Initial exit codes should be documented and stable:
 
 ### 6.10 Browser authentication
 
-Browser login is the first supported interactive authentication method. The command-level contract should be independent of the concrete OAuth or browser-completion protocol:
+Browser login is the first supported interactive authentication method. Its protocol-level implementation is intentionally deferred until the CLI's foundational code is in place and the DoltHub application registration details are available. The command-level contract should remain independent of the concrete OAuth or browser-completion protocol:
 
 ```go
 type Authenticator interface {
@@ -399,7 +399,7 @@ type LoginResult struct {
 }
 ```
 
-The production implementation must follow DoltHub's documented browser authentication protocol. Phase 0 must confirm whether completion uses an OAuth authorization-code exchange with a loopback callback, a DoltHub-specific callback, or another documented mechanism. The implementation must not invent an endpoint or scrape a web page.
+The production implementation must follow DoltHub's documented browser authentication protocol. DoltHub API v2 documents an OAuth 2.0 authorization-code flow at `https://www.dolthub.com/oauth/authorize` and `https://www.dolthub.com/oauth/token`. Before implementing login, confirm the `dh` client registration, supported redirect URIs, PKCE requirements, scopes, callback mechanism, and timeout rules with the DoltHub team. The implementation must not invent the remaining details or scrape a web page.
 
 The expected user experience is:
 
@@ -469,6 +469,17 @@ Acceptance criteria:
 - Contributors can identify the module path, toolchain version, default host, and config location without reading source code.
 - No public API endpoint or authentication behavior is guessed. Unknowns are recorded explicitly.
 - The browser login protocol can be implemented from authoritative DoltHub contracts without scraping pages or handling a user's password.
+
+Recorded decisions:
+
+- Module path: `github.com/dolthub/cli`.
+- Minimum Go version: Go 1.26.0.
+- Supported operating systems: Linux, macOS, and Windows.
+- DoltHub web origin: `https://www.dolthub.com`.
+- DoltHub REST API: v2 at `https://www.dolthub.com/api/v2/`. The published OpenAPI 3.1 specification is the source of truth for endpoints and models.
+- Configuration format: JSON with a reserved schema-version field.
+- Configuration path: `dh/config.json` beneath `os.UserConfigDir()` (for example, `$XDG_CONFIG_HOME/dh/config.json` on Linux when set). Tests and callers may override the path.
+- Browser login implementation is deferred as described in Section 6.10. The known OAuth endpoints are not sufficient to implement a registered public CLI client safely.
 
 ### Phase 1: Buildable executable and root command
 
