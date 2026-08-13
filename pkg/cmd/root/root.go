@@ -1,6 +1,7 @@
 package root
 
 import (
+	configcmd "github.com/dolthub/cli/pkg/cmd/config"
 	"github.com/dolthub/cli/pkg/cmd/version"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -19,6 +20,6 @@ func NewCmdRoot(f *cmdutil.Factory) *cobra.Command {
 		return &cmdutil.FlagError{Err: err}
 	})
 
-	cmd.AddCommand(version.NewCmdVersion(f, nil))
+	cmd.AddCommand(configcmd.NewCmdConfig(f), version.NewCmdVersion(f, nil))
 	return cmd
 }
