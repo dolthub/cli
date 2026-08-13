@@ -1,0 +1,41 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - copyloopvar
+    - durationcheck
+    - fatcontext
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - gocritic
+    - gomoddirectives
+    - goprintffuncname
+    - govet
+    - ineffassign
+    - nilerr
+    - nolintlint
+    - nosprintfhostport
+    - reassign
+    - unused
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters:
+          - bodyclose
+  settings:
+    govet:
+      enable:
+        - httpresponse
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
