@@ -1,8 +1,11 @@
 package cmdutil
 
 import (
+	"net/http"
+
 	"github.com/dolthub/cli/internal/config"
 	"github.com/dolthub/cli/internal/credentials"
+	"github.com/dolthub/cli/internal/dolthub"
 	"github.com/dolthub/cli/pkg/iostreams"
 )
 
@@ -15,4 +18,6 @@ type Factory struct {
 	IO          *iostreams.IOStreams
 	Config      func() (config.Config, error)
 	Credentials credentials.Store
+	HTTPClient  func() (*http.Client, error)
+	APIClient   func() (*dolthub.Client, error)
 }
