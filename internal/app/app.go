@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/dolthub/cli/pkg/cmd/factory"
 	"github.com/dolthub/cli/pkg/cmd/root"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
@@ -26,7 +27,8 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer, version stri
 
 // Run executes dh using the supplied I/O boundary.
 func Run(args []string, streams *iostreams.IOStreams, version string) int {
-	cmd := root.NewCmdRoot(version)
+	f := factory.New(version, streams)
+	cmd := root.NewCmdRoot(f)
 	cmd.SetArgs(args)
 	return execute(cmd, streams)
 }

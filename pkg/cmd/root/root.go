@@ -7,7 +7,7 @@ import (
 )
 
 // NewCmdRoot constructs the root of the dh command tree.
-func NewCmdRoot(appVersion string) *cobra.Command {
+func NewCmdRoot(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "dh",
 		Short:         "DoltHub from the command line",
@@ -19,6 +19,6 @@ func NewCmdRoot(appVersion string) *cobra.Command {
 		return &cmdutil.FlagError{Err: err}
 	})
 
-	cmd.AddCommand(version.NewCmdVersion(appVersion))
+	cmd.AddCommand(version.NewCmdVersion(f, nil))
 	return cmd
 }

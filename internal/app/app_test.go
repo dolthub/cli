@@ -32,6 +32,12 @@ func TestMain(t *testing.T) {
 			wantOut:  "dh version test\n",
 		},
 		{
+			name:     "short version",
+			args:     []string{"version", "--short"},
+			wantCode: exitSuccess,
+			wantOut:  "test\n",
+		},
+		{
 			name:     "unknown command",
 			args:     []string{"unknown"},
 			wantCode: exitUsage,
