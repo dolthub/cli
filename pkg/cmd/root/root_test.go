@@ -14,7 +14,7 @@ func TestNewCmdRootDoesNotRequireExternalState(t *testing.T) {
 	if cmd.Use != "dh" {
 		t.Fatalf("Use = %q, want %q", cmd.Use, "dh")
 	}
-	if cmd.Commands()[0].Name() != "version" {
-		t.Fatalf("first command = %q, want %q", cmd.Commands()[0].Name(), "version")
+	if version, _, err := cmd.Find([]string{"version"}); err != nil || version.Name() != "version" {
+		t.Fatalf("version command not found: %v", err)
 	}
 }

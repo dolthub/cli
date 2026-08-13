@@ -25,6 +25,16 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 	return FlagErrorf("%s accepts no arguments", cmd.CommandPath())
 }
 
+// ExactArgs returns positional validation that is presented as a usage error.
+func ExactArgs(count int) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if len(args) != count {
+			return FlagErrorf("%s requires exactly %d argument(s)", cmd.CommandPath(), count)
+		}
+		return nil
+	}
+}
+
 // SilentError indicates that an error has already been presented to the user.
 type SilentError struct{ Err error }
 
