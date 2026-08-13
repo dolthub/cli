@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dolthub/cli/internal/config"
+	"github.com/dolthub/cli/internal/credentials"
+	"github.com/dolthub/cli/pkg/cmd/root"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -74,6 +77,26 @@ func TestMain(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAuthStatusApplicationExitCode(t *testing.T) {
+	streams, _, _, stderr := iostreams.NewTest()
+	cfg := config.NewMemory()
+	f := &cmdutil.Factory{
+		AppVersion:  "test",
+		IO:          streams,
+		Config:      func() (config.Config, error) { return cfg, nil },
+		Credentials: credentials.NewMemoryStore(),
+		LookupEnv:   func(string) (string, bool) { return "", false },
+	}
+	cmd := root.NewCmdRoot(f)
+	cmd.SetArgs([]string{"auth", "status"})
+	if code := execute(cmd, streams); code != exitAuth {
+		t.Fatalf("exit code = %d, want %d", code, exitAuth)
+	}
+	if !strings.Contains(stderr.String(), "dh auth login") {
+		t.Fatalf("stderr = %q", stderr.String())
 	}
 }
 

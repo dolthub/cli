@@ -21,6 +21,7 @@ func (c *Memory) Host() string {
 func (c *Memory) SetHost(v string)                   { c.DefaultHost = v }
 func (c *Memory) ActiveUser(h string) (string, bool) { v, ok := c.Users[h]; return v, ok }
 func (c *Memory) SetActiveUser(h, u string)          { c.Users[h] = u }
+func (c *Memory) UnsetActiveUser(h string)           { delete(c.Users, h) }
 func (c *Memory) DefaultRepository() (repository.Repository, bool) {
 	if c.Repo == nil {
 		return repository.Repository{}, false

@@ -10,6 +10,7 @@ type Config interface {
 	SetHost(string)
 	ActiveUser(host string) (string, bool)
 	SetActiveUser(host, user string)
+	UnsetActiveUser(host string)
 	DefaultRepository() (repository.Repository, bool)
 	SetDefaultRepository(repository.Repository)
 	Write() error

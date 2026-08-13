@@ -10,10 +10,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/cli/internal/authflow"
 	"github.com/dolthub/cli/internal/config"
 	"github.com/dolthub/cli/internal/credentials"
 	"github.com/dolthub/cli/internal/dolthub"
 	"github.com/dolthub/cli/internal/httptransport"
+	"github.com/dolthub/cli/internal/prompt"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
 )
@@ -24,9 +26,12 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 	var cfg config.Config
 	var cfgErr error
 	f := &cmdutil.Factory{
-		AppVersion:  appVersion,
-		IO:          io,
-		Credentials: credentials.EnvironmentStore{Store: credentials.NewSystemStore(), LookupEnv: os.LookupEnv},
+		AppVersion:    appVersion,
+		IO:            io,
+		Credentials:   credentials.EnvironmentStore{Store: credentials.NewSystemStore(), LookupEnv: os.LookupEnv},
+		Authenticator: authflow.Unavailable{},
+		Prompter:      prompt.System{IO: io},
+		LookupEnv:     os.LookupEnv,
 	}
 	f.Config = func() (config.Config, error) {
 		once.Do(func() {
