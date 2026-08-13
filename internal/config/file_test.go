@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -28,7 +29,10 @@ func TestFileRoundTripAndPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	// Windows enforces access through ACLs and does not expose Unix permission
+	// bits through os.FileMode. Chmod and Mode().Perm() are therefore not a
+	// meaningful assertion on that platform.
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("mode=%o", info.Mode().Perm())
 	}
 	got, err := Load(path)
