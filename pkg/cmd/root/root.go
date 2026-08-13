@@ -2,6 +2,7 @@ package root
 
 import (
 	"github.com/dolthub/cli/pkg/cmd/version"
+	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +15,9 @@ func NewCmdRoot(appVersion string) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
+	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
+		return &cmdutil.FlagError{Err: err}
+	})
 
 	cmd.AddCommand(version.NewCmdVersion(appVersion))
 	return cmd
