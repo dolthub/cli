@@ -29,8 +29,7 @@ func (t OAuthToken) Validate() error {
 }
 
 // NeedsRefresh reports whether the access token is expired or will expire
-// within skew. Credentials without an expiry are treated as opaque legacy or
-// environment tokens and are never refreshed automatically.
+// within skew. Credentials without an expiry are never refreshed automatically.
 func (t OAuthToken) NeedsRefresh(now time.Time, skew time.Duration) bool {
 	return !t.ExpiresAt.IsZero() && !t.ExpiresAt.After(now.Add(skew))
 }
@@ -50,15 +49,13 @@ func EncodeOAuthToken(token OAuthToken) (string, error) {
 	return oauthCredentialPrefix + string(b), nil
 }
 
-// DecodeOAuthToken accepts both versioned OAuth bundles and legacy plain
-// access tokens. This lets existing installations migrate on their next login
-// without invalidating credentials already stored by dh.
+// DecodeOAuthToken accepts only versioned OAuth credential bundles.
 func DecodeOAuthToken(secret string) (OAuthToken, error) {
 	if secret == "" {
 		return OAuthToken{}, errors.New("credential is empty")
 	}
 	if !strings.HasPrefix(secret, oauthCredentialPrefix) {
-		return OAuthToken{AccessToken: secret, TokenType: "Bearer"}, nil
+		return OAuthToken{}, errors.New("credential has an unsupported format")
 	}
 	var token OAuthToken
 	if err := json.Unmarshal([]byte(strings.TrimPrefix(secret, oauthCredentialPrefix)), &token); err != nil {

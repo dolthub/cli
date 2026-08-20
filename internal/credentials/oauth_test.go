@@ -24,13 +24,14 @@ func TestOAuthTokenRoundTrip(t *testing.T) {
 	}
 }
 
-func TestDecodeOAuthTokenAcceptsLegacyAccessToken(t *testing.T) {
-	got, err := DecodeOAuthToken("legacy-access-token")
-	if err != nil {
-		t.Fatal(err)
+func TestDecodeOAuthTokenRejectsUnversionedAccessToken(t *testing.T) {
+	secret := "unversioned-access-secret"
+	_, err := DecodeOAuthToken(secret)
+	if err == nil || !strings.Contains(err.Error(), "unsupported format") {
+		t.Fatalf("error = %v", err)
 	}
-	if got.AccessToken != "legacy-access-token" || got.RefreshToken != "" || got.TokenType != "Bearer" {
-		t.Fatalf("token = %#v", got)
+	if strings.Contains(err.Error(), secret) {
+		t.Fatal("credential leaked in error")
 	}
 }
 
@@ -54,6 +55,6 @@ func TestOAuthTokenNeedsRefresh(t *testing.T) {
 		t.Fatal("near-expiry token did not require refresh")
 	}
 	if (OAuthToken{}).NeedsRefresh(now, time.Minute) {
-		t.Fatal("legacy token requires refresh")
+		t.Fatal("credential without expiry requires refresh")
 	}
 }

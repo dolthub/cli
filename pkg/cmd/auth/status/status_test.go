@@ -42,7 +42,9 @@ func TestStatusStoredCredential(t *testing.T) {
 	cfg := config.NewMemory()
 	cfg.SetActiveUser(config.DefaultHost, "alice")
 	store := credentials.NewMemoryStore()
-	_ = store.Set(config.DefaultHost, "alice", "stored-token")
+	if err := credentials.SetOAuthToken(store, config.DefaultHost, "alice", credentials.OAuthToken{AccessToken: "stored-token", TokenType: "Bearer"}); err != nil {
+		t.Fatal(err)
+	}
 	transport := roundTrip(func(r *http.Request) (*http.Response, error) {
 		if r.Header.Get("Authorization") != "Bearer stored-token" {
 			t.Fatal("wrong token")
@@ -97,7 +99,7 @@ func TestStatusMissingAndInvalid(t *testing.T) {
 		{name: "missing", setup: func(*config.Memory, *credentials.MemoryStore) {}},
 		{name: "invalid", setup: func(c *config.Memory, s *credentials.MemoryStore) {
 			c.SetActiveUser(config.DefaultHost, "alice")
-			_ = s.Set(config.DefaultHost, "alice", "bad")
+			_ = credentials.SetOAuthToken(s, config.DefaultHost, "alice", credentials.OAuthToken{AccessToken: "bad", TokenType: "Bearer"})
 		}, transport: roundTrip(func(r *http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: 401, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"title":"Unauthorized"}`)), Request: r}, nil
 		})},

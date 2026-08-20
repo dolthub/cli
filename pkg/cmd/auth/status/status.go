@@ -62,11 +62,7 @@ func statusRun(ctx context.Context, opts *Options) error {
 	}
 	var transport http.RoundTripper
 	if source == "DH_TOKEN" {
-		credential, decodeErr := credentials.DecodeOAuthToken(token)
-		if decodeErr != nil {
-			return &cmdutil.AuthError{Err: fmt.Errorf("authentication for %s is invalid", host)}
-		}
-		transport, err = httptransport.NewAuthenticated(base, opts.AppVersion, host, credential.AccessToken)
+		transport, err = httptransport.NewAuthenticated(base, opts.AppVersion, host, token)
 	} else {
 		tokenSource := &credentials.TokenSource{Store: opts.Credentials, Host: host, User: user, Refresh: opts.RefreshToken}
 		transport, err = httptransport.NewAuthenticatedTokenSource(base, opts.AppVersion, host, tokenSource)
