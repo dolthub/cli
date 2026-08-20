@@ -10,7 +10,7 @@ import (
 const oauthCredentialPrefix = "dh.oauth.v1:"
 
 // OAuthToken is the complete credential returned by an OAuth token exchange.
-// It is serialized as one opaque secret in the platform credential store.
+// It is serialized as one versioned secret value in the platform credential store.
 type OAuthToken struct {
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token,omitempty"`
@@ -34,7 +34,8 @@ func (t OAuthToken) NeedsRefresh(now time.Time, skew time.Duration) bool {
 	return !t.ExpiresAt.IsZero() && !t.ExpiresAt.After(now.Add(skew))
 }
 
-// EncodeOAuthToken creates the versioned opaque value stored in the keyring.
+// EncodeOAuthToken serializes a versioned OAuth credential bundle for storage
+// as one secret value in the platform credential store.
 func EncodeOAuthToken(token OAuthToken) (string, error) {
 	if err := token.Validate(); err != nil {
 		return "", err
