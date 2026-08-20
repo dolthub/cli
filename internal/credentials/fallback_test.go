@@ -104,3 +104,28 @@ func TestFallbackStoreDeleteRemovesBothBackends(t *testing.T) {
 		t.Fatalf("file error = %v", err)
 	}
 }
+
+func TestFallbackStoreDeleteAtFileIgnoresUnavailableKeyring(t *testing.T) {
+	keyring := NewMemoryStore()
+	keyring.Err = errors.New("keyring unavailable")
+	file := NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := NewFallbackStore(keyring, file)
+	if err := file.Set("example.com", "alice", "file-copy"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.DeleteAt(SourceFile, "example.com", "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Get("example.com", "alice"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("file error = %v", err)
+	}
+}
+
+func TestFallbackStoreDeleteAtReportsAuthoritativeFailure(t *testing.T) {
+	keyring := NewMemoryStore()
+	fileErr := errors.New("disk unavailable")
+	store := NewFallbackStore(keyring, NewUnavailableFileStore(fileErr))
+	if err := store.DeleteAt(SourceFile, "example.com", "alice"); !errors.Is(err, fileErr) {
+		t.Fatalf("error = %v", err)
+	}
+}

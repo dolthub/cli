@@ -3,6 +3,7 @@ package logout
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/dolthub/cli/internal/config"
@@ -29,6 +30,29 @@ func TestLogout(t *testing.T) {
 	}
 	if out.String() == "" {
 		t.Fatal("missing output")
+	}
+}
+
+func TestLogoutFileCredentialIgnoresUnavailableKeyring(t *testing.T) {
+	streams, _, _, _ := iostreams.NewTest()
+	cfg := config.NewMemory()
+	cfg.SetActiveUser(config.DefaultHost, "alice")
+	keyring := credentials.NewMemoryStore()
+	keyring.Err = errors.New("keyring unavailable")
+	file := credentials.NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := credentials.NewFallbackStore(keyring, file)
+	if err := file.Set(config.DefaultHost, "alice", "fake"); err != nil {
+		t.Fatal(err)
+	}
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, LookupEnv: func(string) (string, bool) { return "", false }, Yes: true}
+	if err := logoutRun(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Get(config.DefaultHost, "alice"); !errors.Is(err, credentials.ErrNotFound) {
+		t.Fatalf("file credential error = %v", err)
+	}
+	if _, ok := cfg.ActiveUser(config.DefaultHost); ok {
+		t.Fatal("active user retained")
 	}
 }
 

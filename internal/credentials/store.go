@@ -32,6 +32,7 @@ type SourceStore interface {
 	GetStored(host, user string) (Stored, error)
 	SetPreferred(host, user, secret string) (Source, error)
 	SetAt(source Source, host, user, secret string) error
+	DeleteAt(source Source, host, user string) error
 }
 
 func GetStored(store Store, host, user string) (Stored, error) {
@@ -54,6 +55,13 @@ func SetAt(store Store, source Source, host, user, secret string) error {
 		return sourced.SetAt(source, host, user, secret)
 	}
 	return store.Set(host, user, secret)
+}
+
+func DeleteAt(store Store, source Source, host, user string) error {
+	if sourced, ok := store.(SourceStore); ok {
+		return sourced.DeleteAt(source, host, user)
+	}
+	return store.Delete(host, user)
 }
 
 func FallbackFilePath(store Store) (string, bool) {

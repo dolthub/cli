@@ -260,6 +260,7 @@ type SourceCredentialStore interface {
     GetStored(host, user string) (StoredCredential, error)
     SetPreferred(host, user, secret string) (CredentialSource, error)
     SetAt(source CredentialSource, host, user, secret string) error
+    DeleteAt(source CredentialSource, host, user string) error
     Delete(host, user string) error
 }
 

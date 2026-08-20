@@ -97,6 +97,27 @@ func TestLoginRollsBackCredentialOnConfigFailure(t *testing.T) {
 	}
 }
 
+func TestLoginRollsBackFileCredentialWhenKeyringIsUnavailable(t *testing.T) {
+	streams, _, _, _ := iostreams.NewTest()
+	cfg := config.NewMemory()
+	cfg.WriteErr = errors.New("disk failed")
+	keyring := credentials.NewMemoryStore()
+	keyring.Err = errors.New("keyring unavailable")
+	file := credentials.NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := credentials.NewFallbackStore(keyring, file)
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Credential: credentials.OAuthToken{AccessToken: "fake-token"}}}, LookupEnv: noEnv}
+	err := loginRun(context.Background(), opts)
+	if err == nil || !strings.Contains(err.Error(), "write authentication config") {
+		t.Fatalf("error = %v", err)
+	}
+	if strings.Contains(err.Error(), "keyring unavailable") {
+		t.Fatalf("keyring cleanup error leaked into rollback: %v", err)
+	}
+	if _, err := file.Get(config.DefaultHost, "alice"); !errors.Is(err, credentials.ErrNotFound) {
+		t.Fatalf("file credential error = %v", err)
+	}
+}
+
 func TestLoginRestoresExistingCredentialOnConfigFailure(t *testing.T) {
 	streams, _, _, _ := iostreams.NewTest()
 	cfg := config.NewMemory()
@@ -157,6 +178,29 @@ func TestLoginReplacesUserOnSameHost(t *testing.T) {
 	}
 	if user, _ := cfg.ActiveUser(config.DefaultHost); user != "new" {
 		t.Fatalf("user=%q", user)
+	}
+}
+
+func TestLoginReplacesFileBackedUserWhenKeyringIsUnavailable(t *testing.T) {
+	streams, _, _, _ := iostreams.NewTest()
+	cfg := config.NewMemory()
+	cfg.SetActiveUser(config.DefaultHost, "old")
+	keyring := credentials.NewMemoryStore()
+	keyring.Err = errors.New("keyring unavailable")
+	file := credentials.NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := credentials.NewFallbackStore(keyring, file)
+	if err := credentials.SetOAuthTokenAt(store, credentials.SourceFile, config.DefaultHost, "old", credentials.OAuthToken{AccessToken: "old-token"}); err != nil {
+		t.Fatal(err)
+	}
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "new", Credential: credentials.OAuthToken{AccessToken: "new-token"}}}, LookupEnv: noEnv}
+	if err := loginRun(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Get(config.DefaultHost, "old"); !errors.Is(err, credentials.ErrNotFound) {
+		t.Fatalf("old file credential error = %v", err)
+	}
+	if _, err := file.Get(config.DefaultHost, "new"); err != nil {
+		t.Fatalf("new file credential error = %v", err)
 	}
 }
 
