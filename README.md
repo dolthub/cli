@@ -24,8 +24,22 @@ Run the test suite with `make test` and format Go sources with `make fmt`.
 - Config: JSON at `dh/config.json` beneath the directory returned by
   `os.UserConfigDir()`
 
-Authentication implementation is intentionally deferred until the foundational
-command and application lifecycle are established and the DoltHub OAuth client
-registration details are confirmed.
+## Development authentication
+
+Browser authentication uses DoltHub OAuth 2.0 authorization code flow with
+PKCE. Until release builds carry the shared, DoltHub-owned public client ID,
+provide a development OAuth application's public client ID at runtime:
+
+```sh
+DH_HOST=dev.dolthub.com \
+DH_OAUTH_CLIENT_ID=your-public-client-id \
+dh auth login
+```
+
+The OAuth application must register
+`http://localhost:53682/callback` as a redirect URI and support the
+`api_read_write` scope. `DH_OAUTH_CLIENT_ID` is public application metadata;
+never configure a client secret in `dh`. `DH_HOST` selects the matching web and
+API v2 origin, and `DH_TOKEN` remains available for non-persisted automation.
 
 See [SKELETON.md](SKELETON.md) for the architecture and phased roadmap.

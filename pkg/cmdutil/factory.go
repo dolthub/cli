@@ -3,9 +3,11 @@ package cmdutil
 import (
 	"net/http"
 
+	"github.com/dolthub/cli/internal/authflow"
 	"github.com/dolthub/cli/internal/config"
 	"github.com/dolthub/cli/internal/credentials"
 	"github.com/dolthub/cli/internal/dolthub"
+	"github.com/dolthub/cli/internal/prompt"
 	"github.com/dolthub/cli/pkg/iostreams"
 )
 
@@ -14,10 +16,14 @@ import (
 // Add capabilities only when an implemented command needs them. Commands should
 // copy the narrow dependencies they use into their own Options structures.
 type Factory struct {
-	AppVersion  string
-	IO          *iostreams.IOStreams
-	Config      func() (config.Config, error)
-	Credentials credentials.Store
-	HTTPClient  func() (*http.Client, error)
-	APIClient   func() (*dolthub.Client, error)
+	AppVersion    string
+	IO            *iostreams.IOStreams
+	Config        func() (config.Config, error)
+	Credentials   credentials.Store
+	RefreshToken  credentials.RefreshFunc
+	Authenticator authflow.Authenticator
+	Prompter      prompt.Prompter
+	LookupEnv     func(string) (string, bool)
+	HTTPClient    func() (*http.Client, error)
+	APIClient     func() (*dolthub.Client, error)
 }

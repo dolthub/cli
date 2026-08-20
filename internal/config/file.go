@@ -68,6 +68,7 @@ func (c *File) ActiveUser(host string) (string, bool) {
 	return v, ok
 }
 func (c *File) SetActiveUser(host, user string) { c.data.ActiveUsers[host] = user }
+func (c *File) UnsetActiveUser(host string)     { delete(c.data.ActiveUsers, host) }
 func (c *File) DefaultRepository() (repository.Repository, bool) {
 	if c.data.DefaultRepository == nil {
 		return repository.Repository{}, false

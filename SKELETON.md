@@ -393,13 +393,13 @@ type Authenticator interface {
 }
 
 type LoginResult struct {
-    Host     string
-    Username string
-    Token    string
+    Host       string
+    Username   string
+    Credential credentials.OAuthToken
 }
 ```
 
-The production implementation must follow DoltHub's documented browser authentication protocol. DoltHub API v2 documents an OAuth 2.0 authorization-code flow at `https://www.dolthub.com/oauth/authorize` and `https://www.dolthub.com/oauth/token`. Before implementing login, confirm the `dh` client registration, supported redirect URIs, PKCE requirements, scopes, callback mechanism, and timeout rules with the DoltHub team. The implementation must not invent the remaining details or scrape a web page.
+The production implementation follows DoltHub's OAuth 2.0 authorization-code flow for a registered public client. Authorization uses `/oauth/authorize`; code and refresh-token exchanges use `/api/oauth/access_token` with form-encoded bodies. Public clients send a client ID but no client secret, use PKCE with `code_challenge_method=S256`, and request the `api_read_write` scope. The initial registered loopback redirect is `http://localhost:53682/callback`. Endpoint paths are resolved against the configured DoltHub web origin so the same contract works on the development site. The production public client ID must come from the approved `dh` registration; example or personal application IDs must not be embedded. Development builds accept the public client ID through `DH_OAUTH_CLIENT_ID`. Release builds may inject only the shared, DoltHub-owned public client ID at link time; the environment setting takes precedence so development sites can use their matching registration.
 
 The expected user experience is:
 
@@ -429,6 +429,12 @@ The flow must:
 - Store credentials only after the entire authentication and identity-validation flow succeeds.
 
 Browser opening, callback handling, token exchange, identity lookup, configuration, and credential storage must each be replaceable in tests. Tests must never open a real browser or bind a fixed port.
+
+The loopback implementation binds IPv4 loopback for the registered `localhost`
+redirect, accepts only one `GET /callback` result, and rejects mismatched state,
+OAuth rejection, missing or duplicate codes, unexpected paths, and unsupported
+methods before token exchange. Tests inject an ephemeral callback port; production
+uses the registered `http://localhost:53682/callback` URI.
 
 ## 7. Repository resolution policy
 
@@ -479,7 +485,7 @@ Recorded decisions:
 - DoltHub REST API: v2 at `https://www.dolthub.com/api/v2/`. The published OpenAPI 3.1 specification is the source of truth for endpoints and models.
 - Configuration format: JSON with a reserved schema-version field.
 - Configuration path: `dh/config.json` beneath `os.UserConfigDir()` (for example, `$XDG_CONFIG_HOME/dh/config.json` on Linux when set). Tests and callers may override the path.
-- Browser login implementation is deferred as described in Section 6.10. The known OAuth endpoints are not sufficient to implement a registered public CLI client safely.
+- Browser login uses the public-client authorization-code contract recorded in Section 6.10. The approved production `dh` client ID is supplied when the production authenticator is wired; personal or example registrations are not used.
 
 ### Phase 1: Buildable executable and root command
 
