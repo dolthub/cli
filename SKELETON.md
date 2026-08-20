@@ -250,10 +250,23 @@ Tokens are secrets and should be accessed through a separate credential-store co
 
 ```go
 type CredentialStore interface {
-    Get(host, user string) (token string, err error)
-    Set(host, user, token string) error
+    Get(host, user string) (StoredCredential, error)
+    SetPreferred(host, user, secret string) (CredentialSource, error)
+    SetAt(source CredentialSource, host, user, secret string) error
     Delete(host, user string) error
 }
+
+type StoredCredential struct {
+    Secret string
+    Source CredentialSource // keyring or file
+}
+
+type CredentialSource string
+
+const (
+    CredentialSourceKeyring CredentialSource = "keyring"
+    CredentialSourceFile    CredentialSource = "file"
+)
 ```
 
 The concrete configuration implementation should use the platform-appropriate user config directory through `os.UserConfigDir`, with an overridable path for tests. The initial format may be YAML or JSON, but it must:
@@ -264,7 +277,46 @@ The concrete configuration implementation should use the platform-appropriate us
 - Distinguish a missing config file from malformed configuration.
 - Never print authentication tokens in errors or debug output.
 
-The production credential store should use the operating system's secure credential store. If secure storage is unavailable, login must fail with an actionable error unless the user explicitly opts into a documented, restrictive-permission plaintext fallback. It must never silently downgrade token storage.
+The production credential store should prefer the operating system's secure
+credential store and automatically fall back to a user-only credentials file
+when a keyring write fails. A fallback must never be silent: the command must
+complete successfully but warn that the credential is stored unencrypted and
+print the credentials-file path without printing its contents.
+
+The fallback file should be `credentials.json` beside `config.json` beneath the
+directory returned by `os.UserConfigDir`. It is a secret-bearing file and must
+remain separate from non-secret configuration. Its contract is:
+
+- A versioned JSON document keyed by normalized host and username, whose values
+  are the same versioned OAuth credential bundles accepted by
+  `DecodeOAuthToken`.
+- Parent directories use mode `0700` and the file uses mode `0600` on platforms
+  that support POSIX permissions.
+- Writes use a same-directory temporary file, set its permissions before
+  writing secrets, sync and close it, and atomically rename it into place.
+- Missing files and missing account entries map to `ErrNotFound`; malformed or
+  unsupported documents fail safely and are never silently overwritten.
+- Errors, warnings, and paths never contain serialized credentials or token
+  fields.
+
+Credential provenance is part of the storage result. Login uses
+`SetPreferred`: it attempts the keyring first, then the file. If both fail,
+login fails with both failures represented safely and persists no active-user
+configuration. Non-secret account metadata records the returned source for each
+host and username; source metadata is written atomically with the active-user
+change. Once an account is stored in the fallback file, token refresh
+uses `SetAt` to atomically replace the rotated bundle in that same backend.
+This prevents a crash or partial backend migration from losing a rotated
+refresh token. Moving a file-backed account into the keyring happens only as a
+deliberate login or re-login operation: write the new keyring value first,
+update account metadata, then remove the old file entry. Failure must leave one
+complete usable credential and restore the previous active-account state.
+
+Reads use the recorded source and must not accidentally select a stale copy
+from another backend. Logout attempts to remove the account from both owned
+backends, treats missing entries as success, and reports other deletion
+failures. `DH_TOKEN` remains environment-owned: it bypasses both stores and is
+never copied, replaced, refreshed, or deleted by `dh`.
 
 Environment-provided credentials should take precedence over stored credentials. The initial environment contract should reserve:
 
@@ -562,9 +614,11 @@ Deliverables:
 
 - Add the minimal `config.Config` contract and disk-backed implementation.
 - Add the `CredentialStore` contract and an operating-system credential-store implementation.
+- Add a file credential-store implementation and a keyring-first fallback store.
 - Implement environment precedence for `DH_HOST`, `DH_TOKEN`, and `DH_REPO` where applicable.
 - Implement atomic writes for non-secret configuration.
-- If plaintext token storage is supported, put it behind an explicit opt-in and use restrictive file permissions.
+- Fall back automatically when a keyring write fails, warn clearly, and use
+  restrictive file permissions.
 - Add `dh config get` and `dh config set` only for explicitly supported non-secret settings.
 - Add in-memory configuration and credential-store fakes for tests.
 
@@ -573,7 +627,8 @@ Security requirements:
 - Tokens must never appear in normal output, errors, test snapshots, or HTTP debug logs.
 - Configuration tests must use a temporary directory and path injection.
 - Malformed configuration must return an actionable error and must not be silently overwritten.
-- Secure-store failure must not silently downgrade to plaintext storage.
+- Secure-store failure falls back only after a failed keyring write and emits a
+  warning naming the unencrypted credentials-file path.
 
 Acceptance criteria:
 
@@ -582,7 +637,13 @@ Acceptance criteria:
 - Environment values override persisted values.
 - Writes preserve unrelated supported settings.
 - Credential-store get, set, delete, missing-secret, and failure behavior are tested.
-- File permission behavior for any explicitly enabled plaintext fallback is tested on platforms where it is meaningful.
+- Keyring success removes any superseded fallback entry; keyring failure writes
+  the complete bundle to the fallback file; failure of both stores leaves no
+  active account.
+- File creation, atomic replacement, malformed-file handling, and `0600`/`0700`
+  permission behavior are tested on platforms where those permissions apply.
+- Refresh updates the backend from which the credential was loaded and cannot
+  return a rotated access token before its complete credential bundle is durable.
 
 ### Phase 5: HTTP transport and DoltHub API client
 
@@ -638,6 +699,8 @@ Acceptance criteria:
 - A completed browser login stores only the validated resulting token, never a user password or IdP credential.
 - State mismatch, rejected authorization, timeout, cancellation, malformed callback, exchange failure, and identity-validation failure store no credentials.
 - Successful login stores the token securely and records the matching host and username.
+- If secure storage is unavailable, successful login stores the credential in
+  the user-only fallback file and warns that it is unencrypted.
 - Re-login has an explicit, tested replacement policy and cannot accidentally replace credentials for a different host.
 - `dh auth status` distinguishes stored credentials, environment credentials, invalid credentials, and no credentials.
 - `dh auth logout` removes credentials owned by `dh` and leaves environment credentials untouched.
@@ -810,7 +873,9 @@ The skeleton must establish these rules before authentication or mutation comman
 - Do not pass untrusted arguments through a shell.
 - Use context-aware HTTP requests and subprocesses.
 - Sanitize API messages before rendering them to an interactive terminal if they can contain control sequences.
-- Store tokens in the operating system credential store; any plaintext fallback must be explicit, documented, and protected with the narrowest practical file permissions.
+- Prefer the operating system credential store; if it is unavailable, use the
+  documented user-only fallback file, warn explicitly, and protect it with the
+  narrowest practical file permissions.
 - Validate hostnames and URL schemes before attaching credentials.
 - Attach DoltHub credentials only to configured, trusted DoltHub API hosts.
 - Tests must use unmistakably fake tokens and must assert redaction.
