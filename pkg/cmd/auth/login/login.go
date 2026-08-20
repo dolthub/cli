@@ -47,7 +47,7 @@ func loginRun(ctx context.Context, opts *Options) error {
 	if err != nil {
 		return err
 	}
-	if result.Host != host || result.Username == "" || result.Token == "" {
+	if result.Host != host || result.Username == "" || result.Credential.Validate() != nil {
 		return errors.New("browser login returned an invalid identity")
 	}
 	previousUser, replacing := cfg.ActiveUser(host)
@@ -61,7 +61,11 @@ func loginRun(ctx context.Context, opts *Options) error {
 			return fmt.Errorf("load existing credential: %w", err)
 		}
 	}
-	if err := opts.Credentials.Set(host, result.Username, result.Token); err != nil {
+	encoded, err := credentials.EncodeOAuthToken(result.Credential)
+	if err != nil {
+		return errors.New("browser login returned an invalid credential")
+	}
+	if err := opts.Credentials.Set(host, result.Username, encoded); err != nil {
 		return err
 	}
 	cfg.SetActiveUser(host, result.Username)

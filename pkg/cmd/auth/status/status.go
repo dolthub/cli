@@ -20,13 +20,14 @@ type Options struct {
 	IO            *iostreams.IOStreams
 	Config        func() (config.Config, error)
 	Credentials   credentials.Store
+	RefreshToken  credentials.RefreshFunc
 	LookupEnv     func(string) (string, bool)
 	AppVersion    string
 	BaseTransport http.RoundTripper
 }
 
 func NewCmdStatus(f *cmdutil.Factory, runF func(context.Context, *Options) error) *cobra.Command {
-	opts := &Options{IO: f.IO, Config: f.Config, Credentials: f.Credentials, LookupEnv: f.LookupEnv, AppVersion: f.AppVersion}
+	opts := &Options{IO: f.IO, Config: f.Config, Credentials: f.Credentials, RefreshToken: f.RefreshToken, LookupEnv: f.LookupEnv, AppVersion: f.AppVersion}
 	if runF == nil {
 		runF = statusRun
 	}
@@ -45,7 +46,7 @@ func statusRun(ctx context.Context, opts *Options) error {
 		if !hasUser {
 			return &cmdutil.AuthError{}
 		}
-		token, err = opts.Credentials.Get(host, user)
+		_, err = credentials.GetOAuthToken(opts.Credentials, host, user)
 		if err != nil {
 			if errors.Is(err, credentials.ErrNotFound) {
 				return &cmdutil.AuthError{}
@@ -59,7 +60,17 @@ func statusRun(ctx context.Context, opts *Options) error {
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	transport, err := httptransport.NewAuthenticated(base, opts.AppVersion, host, token)
+	var transport http.RoundTripper
+	if source == "DH_TOKEN" {
+		credential, decodeErr := credentials.DecodeOAuthToken(token)
+		if decodeErr != nil {
+			return &cmdutil.AuthError{Err: fmt.Errorf("authentication for %s is invalid", host)}
+		}
+		transport, err = httptransport.NewAuthenticated(base, opts.AppVersion, host, credential.AccessToken)
+	} else {
+		tokenSource := &credentials.TokenSource{Store: opts.Credentials, Host: host, User: user, Refresh: opts.RefreshToken}
+		transport, err = httptransport.NewAuthenticatedTokenSource(base, opts.AppVersion, host, tokenSource)
+	}
 	if err != nil {
 		return err
 	}

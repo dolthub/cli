@@ -55,13 +55,19 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 		}
 		host := cfg.Host()
 		transport := httptransport.New(http.DefaultTransport, appVersion)
-		if user, ok := cfg.ActiveUser(host); ok {
-			token, tokenErr := f.Credentials.Get(host, user)
+		if envToken, ok := f.LookupEnv("DH_TOKEN"); ok && envToken != "" {
+			transport, err = httptransport.NewAuthenticated(http.DefaultTransport, appVersion, host, envToken)
+			if err != nil {
+				return nil, err
+			}
+		} else if user, ok := cfg.ActiveUser(host); ok {
+			_, tokenErr := credentials.GetOAuthToken(f.Credentials, host, user)
 			if tokenErr != nil && !errors.Is(tokenErr, credentials.ErrNotFound) {
 				return nil, fmt.Errorf("load credential: %w", tokenErr)
 			}
 			if tokenErr == nil {
-				transport, err = httptransport.NewAuthenticated(http.DefaultTransport, appVersion, host, token)
+				source := &credentials.TokenSource{Store: f.Credentials, Host: host, User: user, Refresh: f.RefreshToken}
+				transport, err = httptransport.NewAuthenticatedTokenSource(http.DefaultTransport, appVersion, host, source)
 				if err != nil {
 					return nil, err
 				}

@@ -20,6 +20,7 @@ type Factory struct {
 	IO            *iostreams.IOStreams
 	Config        func() (config.Config, error)
 	Credentials   credentials.Store
+	RefreshToken  credentials.RefreshFunc
 	Authenticator authflow.Authenticator
 	Prompter      prompt.Prompter
 	LookupEnv     func(string) (string, bool)

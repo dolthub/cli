@@ -41,15 +41,15 @@ func TestLoginPersistsValidatedResult(t *testing.T) {
 	cfg := config.NewMemory()
 	store := credentials.NewMemoryStore()
 	secret := "fake-secret-token"
-	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Token: secret}}, LookupEnv: noEnv}
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Credential: credentials.OAuthToken{AccessToken: secret, RefreshToken: "refresh-token", TokenType: "Bearer"}}}, LookupEnv: noEnv}
 	if err := loginRun(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
 	if user, _ := cfg.ActiveUser(config.DefaultHost); user != "alice" {
 		t.Fatal(user)
 	}
-	if got, _ := store.Get(config.DefaultHost, "alice"); got != secret {
-		t.Fatal("token not stored")
+	if got, err := credentials.GetOAuthToken(store, config.DefaultHost, "alice"); err != nil || got.AccessToken != secret {
+		t.Fatal("credential not stored")
 	}
 	if strings.Contains(out.String()+errOut.String(), secret) {
 		t.Fatal("token leaked")
@@ -61,7 +61,7 @@ func TestLoginRollsBackCredentialOnConfigFailure(t *testing.T) {
 	cfg := config.NewMemory()
 	cfg.WriteErr = errors.New("disk failed")
 	store := credentials.NewMemoryStore()
-	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Token: "fake-token"}}, LookupEnv: noEnv}
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Credential: credentials.OAuthToken{AccessToken: "fake-token"}}}, LookupEnv: noEnv}
 	if err := loginRun(context.Background(), opts); err == nil {
 		t.Fatal("expected error")
 	}
@@ -82,7 +82,7 @@ func TestLoginRestoresExistingCredentialOnConfigFailure(t *testing.T) {
 	if err := store.Set(config.DefaultHost, "alice", "old-token"); err != nil {
 		t.Fatal(err)
 	}
-	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Token: "new-token"}}, LookupEnv: noEnv}
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Credential: credentials.OAuthToken{AccessToken: "new-token"}}}, LookupEnv: noEnv}
 	if err := loginRun(context.Background(), opts); err == nil {
 		t.Fatal("expected error")
 	}
@@ -96,7 +96,7 @@ func TestLoginRestoresExistingCredentialOnConfigFailure(t *testing.T) {
 
 func TestLoginRejectsMismatchedHost(t *testing.T) {
 	cfg := config.NewMemory()
-	opts := &Options{Config: func() (config.Config, error) { return cfg, nil }, Credentials: credentials.NewMemoryStore(), Authenticator: fakeAuth{result: authflow.LoginResult{Host: "evil.example", Username: "alice", Token: "fake"}}, LookupEnv: noEnv}
+	opts := &Options{Config: func() (config.Config, error) { return cfg, nil }, Credentials: credentials.NewMemoryStore(), Authenticator: fakeAuth{result: authflow.LoginResult{Host: "evil.example", Username: "alice", Credential: credentials.OAuthToken{AccessToken: "fake"}}}, LookupEnv: noEnv}
 	if err := loginRun(context.Background(), opts); err == nil {
 		t.Fatal("expected error")
 	}
@@ -124,7 +124,7 @@ func TestLoginReplacesUserOnSameHost(t *testing.T) {
 	cfg.SetActiveUser(config.DefaultHost, "old")
 	store := credentials.NewMemoryStore()
 	_ = store.Set(config.DefaultHost, "old", "old-token")
-	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "new", Token: "new-token"}}, LookupEnv: noEnv}
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "new", Credential: credentials.OAuthToken{AccessToken: "new-token"}}}, LookupEnv: noEnv}
 	if err := loginRun(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
