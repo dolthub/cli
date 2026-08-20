@@ -35,10 +35,15 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 	var once sync.Once
 	var cfg config.Config
 	var cfgErr error
+	credentialPath, credentialPathErr := credentials.Path()
+	fileStore := credentials.NewFileStore(credentialPath)
+	if credentialPathErr != nil {
+		fileStore = credentials.NewUnavailableFileStore(credentialPathErr)
+	}
 	f := &cmdutil.Factory{
 		AppVersion:  appVersion,
 		IO:          io,
-		Credentials: credentials.EnvironmentStore{Store: credentials.NewSystemStore(), LookupEnv: os.LookupEnv},
+		Credentials: credentials.NewFallbackStore(credentials.NewSystemStore(), fileStore),
 		Prompter:    prompt.System{IO: io},
 		LookupEnv:   os.LookupEnv,
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +56,27 @@ func TestStatusStoredCredential(t *testing.T) {
 	if err := statusRun(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "credential store") {
+	if !strings.Contains(out.String(), "keyring") {
+		t.Fatal(out.String())
+	}
+}
+
+func TestStatusReportsFileCredential(t *testing.T) {
+	streams, _, out, _ := iostreams.NewTest()
+	cfg := config.NewMemory()
+	cfg.SetActiveUser(config.DefaultHost, "alice")
+	store := credentials.NewFallbackStore(credentials.NewMemoryStore(), credentials.NewFileStore(filepath.Join(t.TempDir(), "credentials.json")))
+	if err := credentials.SetOAuthTokenAt(store, credentials.SourceFile, config.DefaultHost, "alice", credentials.OAuthToken{AccessToken: "stored-token", TokenType: "Bearer"}); err != nil {
+		t.Fatal(err)
+	}
+	transport := roundTrip(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"data":{"username":"alice"}}`)), Request: r}, nil
+	})
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, LookupEnv: func(string) (string, bool) { return "", false }, AppVersion: "test", BaseTransport: transport}
+	if err := statusRun(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "credential file") {
 		t.Fatal(out.String())
 	}
 }
@@ -81,7 +102,7 @@ func TestStatusRefreshesStoredCredential(t *testing.T) {
 	if err := statusRun(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "credential store") {
+	if !strings.Contains(out.String(), "keyring") {
 		t.Fatal(out.String())
 	}
 	stored, err := credentials.GetOAuthToken(store, config.DefaultHost, "alice")

@@ -79,10 +79,37 @@ func SetOAuthToken(store Store, host, user string, token OAuthToken) error {
 	return store.Set(host, user, secret)
 }
 
-func GetOAuthToken(store Store, host, user string) (OAuthToken, error) {
-	secret, err := store.Get(host, user)
+func SetOAuthTokenPreferred(store Store, host, user string, token OAuthToken) (Source, error) {
+	secret, err := EncodeOAuthToken(token)
 	if err != nil {
-		return OAuthToken{}, err
+		return "", err
 	}
-	return DecodeOAuthToken(secret)
+	return SetPreferred(store, host, user, secret)
+}
+
+func SetOAuthTokenAt(store Store, source Source, host, user string, token OAuthToken) error {
+	secret, err := EncodeOAuthToken(token)
+	if err != nil {
+		return err
+	}
+	return SetAt(store, source, host, user, secret)
+}
+
+func GetOAuthToken(store Store, host, user string) (OAuthToken, error) {
+	stored, err := GetStoredOAuthToken(store, host, user)
+	return stored.Token, err
+}
+
+type StoredOAuthToken struct {
+	Token  OAuthToken
+	Source Source
+}
+
+func GetStoredOAuthToken(store Store, host, user string) (StoredOAuthToken, error) {
+	stored, err := GetStored(store, host, user)
+	if err != nil {
+		return StoredOAuthToken{}, err
+	}
+	token, err := DecodeOAuthToken(stored.Secret)
+	return StoredOAuthToken{Token: token, Source: stored.Source}, err
 }

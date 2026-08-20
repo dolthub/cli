@@ -49,6 +49,12 @@ func TestFailuresDoNotExposeToken(t *testing.T) {
 	}
 }
 
+func TestFallbackFilePathForStoreWithoutFallback(t *testing.T) {
+	if path, ok := FallbackFilePath(NewMemoryStore()); ok || path != "" {
+		t.Fatalf("path = %q, ok = %v", path, ok)
+	}
+}
+
 type fakeBackend struct{ err error }
 
 func (f *fakeBackend) Get(string, string) (string, error) { return "", f.err }

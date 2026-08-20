@@ -51,21 +51,18 @@ func loginRun(ctx context.Context, opts *Options) error {
 		return errors.New("browser login returned an invalid identity")
 	}
 	previousUser, replacing := cfg.ActiveUser(host)
-	var previousToken string
+	var previousCredential credentials.Stored
 	var hadPreviousToken bool
 	if replacing && previousUser == result.Username {
-		previousToken, err = opts.Credentials.Get(host, previousUser)
+		previousCredential, err = credentials.GetStored(opts.Credentials, host, previousUser)
 		if err == nil {
 			hadPreviousToken = true
 		} else if !errors.Is(err, credentials.ErrNotFound) {
 			return fmt.Errorf("load existing credential: %w", err)
 		}
 	}
-	encoded, err := credentials.EncodeOAuthToken(result.Credential)
+	storageSource, err := credentials.SetOAuthTokenPreferred(opts.Credentials, host, result.Username, result.Credential)
 	if err != nil {
-		return errors.New("browser login returned an invalid credential")
-	}
-	if err := opts.Credentials.Set(host, result.Username, encoded); err != nil {
 		return err
 	}
 	cfg.SetActiveUser(host, result.Username)
@@ -75,7 +72,7 @@ func loginRun(ctx context.Context, opts *Options) error {
 		} else {
 			cfg.UnsetActiveUser(host)
 		}
-		rollbackErr := rollbackCredential(opts.Credentials, host, result.Username, previousToken, hadPreviousToken)
+		rollbackErr := rollbackCredential(opts.Credentials, host, result.Username, previousCredential, hadPreviousToken)
 		return errors.Join(fmt.Errorf("write authentication config: %w", err), rollbackErr)
 	}
 	if replacing && previousUser != result.Username {
@@ -83,13 +80,20 @@ func loginRun(ctx context.Context, opts *Options) error {
 			return fmt.Errorf("remove previous credential: %w", err)
 		}
 	}
+	if storageSource == credentials.SourceFile {
+		if path, ok := credentials.FallbackFilePath(opts.Credentials); ok {
+			_, _ = fmt.Fprintf(opts.IO.ErrOut, "warning: system credential storage is unavailable; authentication credentials were saved unencrypted to %s\n", path)
+		} else {
+			_, _ = fmt.Fprintln(opts.IO.ErrOut, "warning: system credential storage is unavailable; authentication credentials were saved unencrypted")
+		}
+	}
 	_, err = fmt.Fprintf(opts.IO.Out, "Logged in to %s as %s\n", host, result.Username)
 	return err
 }
 
-func rollbackCredential(store credentials.Store, host, user, previousToken string, hadPreviousToken bool) error {
+func rollbackCredential(store credentials.Store, host, user string, previous credentials.Stored, hadPreviousToken bool) error {
 	if hadPreviousToken {
-		if err := store.Set(host, user, previousToken); err != nil {
+		if err := credentials.SetAt(store, previous.Source, host, user, previous.Secret); err != nil {
 			return fmt.Errorf("restore previous credential: %w", err)
 		}
 		return nil

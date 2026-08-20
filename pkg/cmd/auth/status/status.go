@@ -41,17 +41,23 @@ func statusRun(ctx context.Context, opts *Options) error {
 	host := cfg.Host()
 	user, hasUser := cfg.ActiveUser(host)
 	token, fromEnv := opts.LookupEnv("DH_TOKEN")
-	source := "credential store"
+	var source string
 	if !fromEnv || token == "" {
 		if !hasUser {
 			return &cmdutil.AuthError{}
 		}
-		_, err = credentials.GetOAuthToken(opts.Credentials, host, user)
+		stored, storedErr := credentials.GetStoredOAuthToken(opts.Credentials, host, user)
+		err = storedErr
 		if err != nil {
 			if errors.Is(err, credentials.ErrNotFound) {
 				return &cmdutil.AuthError{}
 			}
 			return err
+		}
+		if stored.Source == credentials.SourceFile {
+			source = "credential file"
+		} else {
+			source = "keyring"
 		}
 	} else {
 		source = "DH_TOKEN"

@@ -3,6 +3,7 @@ package credentials
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -22,6 +23,30 @@ func TestTokenSourceReturnsFreshAccessToken(t *testing.T) {
 	got, err := source.AccessToken(context.Background())
 	if err != nil || got != "access" {
 		t.Fatalf("token = %q, err = %v", got, err)
+	}
+}
+
+func TestTokenSourceRefreshesFileCredentialInPlace(t *testing.T) {
+	keyring := NewMemoryStore()
+	file := NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := NewFallbackStore(keyring, file)
+	now := time.Unix(1000, 0)
+	old := OAuthToken{AccessToken: "old", RefreshToken: "refresh", TokenType: "Bearer", ExpiresAt: now}
+	if err := SetOAuthTokenAt(store, SourceFile, "example.com", "alice", old); err != nil {
+		t.Fatal(err)
+	}
+	source := &TokenSource{Store: store, Host: "example.com", User: "alice", Now: func() time.Time { return now }, Refresh: func(context.Context, string) (OAuthToken, error) {
+		return OAuthToken{AccessToken: "new", RefreshToken: "rotated", TokenType: "Bearer", ExpiresAt: now.Add(time.Hour)}, nil
+	}}
+	if got, err := source.AccessToken(context.Background()); err != nil || got != "new" {
+		t.Fatalf("token = %q, error = %v", got, err)
+	}
+	stored, err := GetStoredOAuthToken(store, "example.com", "alice")
+	if err != nil || stored.Source != SourceFile || stored.Token.RefreshToken != "rotated" {
+		t.Fatalf("stored = %#v, error = %v", stored, err)
+	}
+	if _, err := keyring.Get("example.com", "alice"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("keyring error = %v", err)
 	}
 }
 
