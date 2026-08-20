@@ -399,7 +399,7 @@ type LoginResult struct {
 }
 ```
 
-The production implementation follows DoltHub's OAuth 2.0 authorization-code flow for a registered public client. Authorization uses `/oauth/authorize`; code and refresh-token exchanges use `/api/oauth/access_token` with form-encoded bodies. Public clients send a client ID but no client secret, use PKCE with `code_challenge_method=S256`, and request the `api_read_write` scope. The initial registered loopback redirect is `http://localhost:53682/callback`. Endpoint paths are resolved against the configured DoltHub web origin so the same contract works on the development site. The production public client ID must come from the approved `dh` registration; example or personal application IDs must not be embedded.
+The production implementation follows DoltHub's OAuth 2.0 authorization-code flow for a registered public client. Authorization uses `/oauth/authorize`; code and refresh-token exchanges use `/api/oauth/access_token` with form-encoded bodies. Public clients send a client ID but no client secret, use PKCE with `code_challenge_method=S256`, and request the `api_read_write` scope. The initial registered loopback redirect is `http://localhost:53682/callback`. Endpoint paths are resolved against the configured DoltHub web origin so the same contract works on the development site. The production public client ID must come from the approved `dh` registration; example or personal application IDs must not be embedded. Development builds accept the public client ID through `DH_OAUTH_CLIENT_ID`. Release builds may inject only the shared, DoltHub-owned public client ID at link time; the environment setting takes precedence so development sites can use their matching registration.
 
 The expected user experience is:
 
