@@ -63,7 +63,7 @@ func logoutRun(_ context.Context, opts *Options) error {
 		return tokenErr
 	}
 	if tokenErr == nil {
-		if err := opts.Credentials.Delete(host, user); err != nil && !errors.Is(err, credentials.ErrNotFound) {
+		if err := credentials.DeleteAt(opts.Credentials, stored.Source, host, user); err != nil && !errors.Is(err, credentials.ErrNotFound) {
 			return err
 		}
 	}

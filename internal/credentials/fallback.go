@@ -112,3 +112,26 @@ func (s *FallbackStore) Delete(host, user string) error {
 	}
 	return errors.Join(keyringErr, fileErr)
 }
+
+// DeleteAt removes the credential from its authoritative backend. Deleting a
+// stale copy from the other backend is best-effort so an unavailable keyring
+// cannot prevent logout of a file-backed credential (and vice versa).
+func (s *FallbackStore) DeleteAt(source Source, host, user string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var authoritativeErr error
+	switch source {
+	case SourceFile:
+		authoritativeErr = s.file.Delete(host, user)
+		_ = s.keyring.Delete(host, user)
+	case SourceKeyring:
+		authoritativeErr = s.keyring.Delete(host, user)
+		_ = s.file.Delete(host, user)
+	default:
+		return errors.New("credential source is invalid")
+	}
+	if errors.Is(authoritativeErr, ErrNotFound) {
+		return nil
+	}
+	return authoritativeErr
+}

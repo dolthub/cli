@@ -53,7 +53,7 @@ func loginRun(ctx context.Context, opts *Options) error {
 	previousUser, replacing := cfg.ActiveUser(host)
 	var previousCredential credentials.Stored
 	var hadPreviousToken bool
-	if replacing && previousUser == result.Username {
+	if replacing {
 		previousCredential, err = credentials.GetStored(opts.Credentials, host, previousUser)
 		if err == nil {
 			hadPreviousToken = true
@@ -72,12 +72,14 @@ func loginRun(ctx context.Context, opts *Options) error {
 		} else {
 			cfg.UnsetActiveUser(host)
 		}
-		rollbackErr := rollbackCredential(opts.Credentials, host, result.Username, previousCredential, hadPreviousToken)
+		rollbackErr := rollbackCredential(opts.Credentials, storageSource, host, result.Username, previousCredential, hadPreviousToken && previousUser == result.Username)
 		return errors.Join(fmt.Errorf("write authentication config: %w", err), rollbackErr)
 	}
 	if replacing && previousUser != result.Username {
-		if err := opts.Credentials.Delete(host, previousUser); err != nil && !errors.Is(err, credentials.ErrNotFound) {
-			return fmt.Errorf("remove previous credential: %w", err)
+		if hadPreviousToken {
+			if err := credentials.DeleteAt(opts.Credentials, previousCredential.Source, host, previousUser); err != nil && !errors.Is(err, credentials.ErrNotFound) {
+				return fmt.Errorf("remove previous credential: %w", err)
+			}
 		}
 	}
 	if storageSource == credentials.SourceFile {
@@ -91,14 +93,14 @@ func loginRun(ctx context.Context, opts *Options) error {
 	return err
 }
 
-func rollbackCredential(store credentials.Store, host, user string, previous credentials.Stored, hadPreviousToken bool) error {
+func rollbackCredential(store credentials.Store, newSource credentials.Source, host, user string, previous credentials.Stored, hadPreviousToken bool) error {
 	if hadPreviousToken {
 		if err := credentials.SetAt(store, previous.Source, host, user, previous.Secret); err != nil {
 			return fmt.Errorf("restore previous credential: %w", err)
 		}
 		return nil
 	}
-	if err := store.Delete(host, user); err != nil && !errors.Is(err, credentials.ErrNotFound) {
+	if err := credentials.DeleteAt(store, newSource, host, user); err != nil && !errors.Is(err, credentials.ErrNotFound) {
 		return fmt.Errorf("remove new credential: %w", err)
 	}
 	return nil
