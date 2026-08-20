@@ -393,9 +393,9 @@ type Authenticator interface {
 }
 
 type LoginResult struct {
-    Host     string
-    Username string
-    Token    string
+    Host       string
+    Username   string
+    Credential credentials.OAuthToken
 }
 ```
 
@@ -429,6 +429,12 @@ The flow must:
 - Store credentials only after the entire authentication and identity-validation flow succeeds.
 
 Browser opening, callback handling, token exchange, identity lookup, configuration, and credential storage must each be replaceable in tests. Tests must never open a real browser or bind a fixed port.
+
+The loopback implementation binds IPv4 loopback for the registered `localhost`
+redirect, accepts only one `GET /callback` result, and rejects mismatched state,
+OAuth rejection, missing or duplicate codes, unexpected paths, and unsupported
+methods before token exchange. Tests inject an ephemeral callback port; production
+uses the registered `http://localhost:53682/callback` URI.
 
 ## 7. Repository resolution policy
 
