@@ -250,7 +250,14 @@ Tokens are secrets and should be accessed through a separate credential-store co
 
 ```go
 type CredentialStore interface {
-    Get(host, user string) (StoredCredential, error)
+    Get(host, user string) (secret string, err error)
+    Set(host, user, secret string) error
+    Delete(host, user string) error
+}
+
+type SourceCredentialStore interface {
+    CredentialStore
+    GetStored(host, user string) (StoredCredential, error)
     SetPreferred(host, user, secret string) (CredentialSource, error)
     SetAt(source CredentialSource, host, user, secret string) error
     Delete(host, user string) error
@@ -302,9 +309,8 @@ remain separate from non-secret configuration. Its contract is:
 Credential provenance is part of the storage result. Login uses
 `SetPreferred`: it attempts the keyring first, then the file. If both fail,
 login fails with both failures represented safely and persists no active-user
-configuration. Non-secret account metadata records the returned source for each
-host and username; source metadata is written atomically with the active-user
-change. Once an account is stored in the fallback file, token refresh
+configuration. The composite store resolves a file entry before a keyring entry
+and returns its source with the credential. Once an account is stored in the fallback file, token refresh
 uses `SetAt` to atomically replace the rotated bundle in that same backend.
 This prevents a crash or partial backend migration from losing a rotated
 refresh token. Moving a file-backed account into the keyring happens only as a

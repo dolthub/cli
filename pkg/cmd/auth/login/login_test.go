@@ -3,6 +3,7 @@ package login
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,6 +17,29 @@ import (
 type fakeAuth struct {
 	result authflow.LoginResult
 	err    error
+}
+
+func TestLoginWarnsWhenKeyringFallsBackToFile(t *testing.T) {
+	streams, _, out, errOut := iostreams.NewTest()
+	cfg := config.NewMemory()
+	keyring := credentials.NewMemoryStore()
+	keyring.Err = errors.New("keyring unavailable")
+	path := filepath.Join(t.TempDir(), "credentials.json")
+	store := credentials.NewFallbackStore(keyring, credentials.NewFileStore(path))
+	opts := &Options{IO: streams, Config: func() (config.Config, error) { return cfg, nil }, Credentials: store, Authenticator: fakeAuth{result: authflow.LoginResult{Host: config.DefaultHost, Username: "alice", Credential: credentials.OAuthToken{AccessToken: "access", RefreshToken: "refresh", TokenType: "Bearer"}}}, LookupEnv: noEnv}
+	if err := loginRun(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(errOut.String(), "saved unencrypted") || !strings.Contains(errOut.String(), path) {
+		t.Fatalf("warning = %q", errOut.String())
+	}
+	if strings.Contains(out.String()+errOut.String(), "access") || strings.Contains(out.String()+errOut.String(), "refresh") {
+		t.Fatal("credential leaked")
+	}
+	stored, err := credentials.GetStoredOAuthToken(store, config.DefaultHost, "alice")
+	if err != nil || stored.Source != credentials.SourceFile {
+		t.Fatalf("stored = %#v, error = %v", stored, err)
+	}
 }
 
 func (f fakeAuth) Login(context.Context, string) (authflow.LoginResult, error) {

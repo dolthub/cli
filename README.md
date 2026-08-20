@@ -42,4 +42,9 @@ The OAuth application must register
 never configure a client secret in `dh`. `DH_HOST` selects the matching web and
 API v2 origin, and `DH_TOKEN` remains available for non-persisted automation.
 
+`dh` prefers the operating system credential manager. If it is unavailable,
+login falls back to an unencrypted `credentials.json` in the `dh` user config
+directory and prints a warning with the exact path. On systems with POSIX file
+permissions, the directory is restricted to `0700` and the file to `0600`.
+
 See [SKELETON.md](SKELETON.md) for the architecture and phased roadmap.

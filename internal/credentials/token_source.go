@@ -36,10 +36,11 @@ func (s *TokenSource) AccessToken(ctx context.Context) (string, error) {
 	if s.Store == nil {
 		return "", errors.New("credential store is not configured")
 	}
-	token, err := GetOAuthToken(s.Store, s.Host, s.User)
+	stored, err := GetStoredOAuthToken(s.Store, s.Host, s.User)
 	if err != nil {
 		return "", err
 	}
+	token := stored.Token
 	now := time.Now()
 	if s.Now != nil {
 		now = s.Now()
@@ -67,7 +68,7 @@ func (s *TokenSource) AccessToken(ctx context.Context) (string, error) {
 	if rotated.RefreshToken == "" {
 		return "", errors.New("refresh oauth credential: response has no rotated refresh token")
 	}
-	if err := SetOAuthToken(s.Store, s.Host, s.User, rotated); err != nil {
+	if err := SetOAuthTokenAt(s.Store, stored.Source, s.Host, s.User, rotated); err != nil {
 		return "", fmt.Errorf("persist refreshed oauth credential: %w", err)
 	}
 	return rotated.AccessToken, nil

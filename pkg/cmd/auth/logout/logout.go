@@ -58,7 +58,7 @@ func logoutRun(_ context.Context, opts *Options) error {
 			return &cmdutil.CancelError{}
 		}
 	}
-	token, tokenErr := opts.Credentials.Get(host, user)
+	stored, tokenErr := credentials.GetStored(opts.Credentials, host, user)
 	if tokenErr != nil && !errors.Is(tokenErr, credentials.ErrNotFound) {
 		return tokenErr
 	}
@@ -71,7 +71,7 @@ func logoutRun(_ context.Context, opts *Options) error {
 	if err := cfg.Write(); err != nil {
 		cfg.SetActiveUser(host, user)
 		if tokenErr == nil {
-			if restoreErr := opts.Credentials.Set(host, user, token); restoreErr != nil {
+			if restoreErr := credentials.SetAt(opts.Credentials, stored.Source, host, user, stored.Secret); restoreErr != nil {
 				return errors.Join(err, fmt.Errorf("restore credential after config failure: %w", restoreErr))
 			}
 		}
