@@ -8,6 +8,7 @@ import (
 	configcmd "github.com/dolthub/cli/pkg/cmd/config"
 	"github.com/dolthub/cli/pkg/cmd/db"
 	"github.com/dolthub/cli/pkg/cmd/operation"
+	"github.com/dolthub/cli/pkg/cmd/pr"
 	"github.com/dolthub/cli/pkg/cmd/release"
 	"github.com/dolthub/cli/pkg/cmd/tag"
 	"github.com/dolthub/cli/pkg/cmd/version"
@@ -28,6 +29,6 @@ func NewCmdRoot(f *cmdutil.Factory) *cobra.Command {
 		return &cmdutil.FlagError{Err: err}
 	})
 
-	cmd.AddCommand(auth.NewCmdAuth(f), branch.NewCmdBranch(f), browse.NewCmdBrowse(f, nil), completion.NewCmdCompletion(), configcmd.NewCmdConfig(f), db.NewCmdDB(f), operation.NewCmdOperation(f), release.NewCmdRelease(f), tag.NewCmdTag(f), version.NewCmdVersion(f, nil))
+	cmd.AddCommand(auth.NewCmdAuth(f), branch.NewCmdBranch(f), browse.NewCmdBrowse(f, nil), completion.NewCmdCompletion(), configcmd.NewCmdConfig(f), db.NewCmdDB(f), operation.NewCmdOperation(f), pr.NewCmdPR(f), release.NewCmdRelease(f), tag.NewCmdTag(f), version.NewCmdVersion(f, nil))
 	return cmd
 }
