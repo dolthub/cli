@@ -30,6 +30,65 @@ type Meta struct {
 	NextPageToken string `json:"next_page_token"`
 }
 
+// RawResponse is a successful generic API response.
+type RawResponse struct {
+	StatusCode int
+	Header     http.Header
+	Body       []byte
+}
+
+// Raw performs a generic request beneath the configured API v2 prefix.
+func (c *Client) Raw(ctx context.Context, method, endpoint string, body []byte) (RawResponse, error) {
+	reference, err := url.Parse(endpoint)
+	if err != nil || reference.IsAbs() || reference.Host != "" || reference.Fragment != "" {
+		return RawResponse{}, errors.New("API endpoint must be relative to /api/v2/")
+	}
+	clean := strings.TrimPrefix(reference.Path, "/api/v2/")
+	clean = strings.TrimPrefix(clean, "api/v2/")
+	if strings.HasPrefix(reference.Path, "/") && !strings.HasPrefix(reference.Path, "/api/v2/") {
+		return RawResponse{}, errors.New("API endpoint must be relative to /api/v2/")
+	}
+	for _, segment := range strings.Split(clean, "/") {
+		if segment == ".." || segment == "." {
+			return RawResponse{}, errors.New("API endpoint must not escape /api/v2/")
+		}
+	}
+	reference.Path = clean
+	reference.RawPath = ""
+	u := c.baseURL.ResolveReference(reference)
+	if !strings.HasPrefix(u.Path, c.baseURL.Path) {
+		return RawResponse{}, errors.New("API endpoint must not escape /api/v2/")
+	}
+	var reader io.Reader
+	if len(body) > 0 {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), reader)
+	if err != nil {
+		return RawResponse{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if reader != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if ctx.Err() != nil {
+			return RawResponse{}, ctx.Err()
+		}
+		return RawResponse{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return RawResponse{}, decodeAPIError(resp, req)
+	}
+	payload, err := readLimited(resp.Body, maxSuccessResponse)
+	if err != nil {
+		return RawResponse{}, err
+	}
+	return RawResponse{StatusCode: resp.StatusCode, Header: resp.Header.Clone(), Body: payload}, nil
+}
+
 // NewClient constructs a client using an injected HTTP client and API base URL.
 func NewClient(httpClient *http.Client, baseURL *url.URL) (*Client, error) {
 	if httpClient == nil {
