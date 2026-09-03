@@ -2,6 +2,7 @@ package configcmd
 
 import (
 	getcmd "github.com/dolthub/cli/pkg/cmd/config/get"
+	listcmd "github.com/dolthub/cli/pkg/cmd/config/list"
 	setcmd "github.com/dolthub/cli/pkg/cmd/config/set"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -10,6 +11,6 @@ import (
 // NewCmdConfig constructs the config command group.
 func NewCmdConfig(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{Use: "config", Short: "Manage dh configuration"}
-	cmd.AddCommand(getcmd.NewCmdGet(f, nil), setcmd.NewCmdSet(f, nil))
+	cmd.AddCommand(getcmd.NewCmdGet(f, nil), listcmd.NewCmdList(f, nil), setcmd.NewCmdSet(f, nil))
 	return cmd
 }

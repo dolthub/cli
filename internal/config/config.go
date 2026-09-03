@@ -7,11 +7,13 @@ const DefaultHost = "www.dolthub.com"
 // Config stores non-secret CLI configuration.
 type Config interface {
 	Host() string
+	ConfiguredHost() (string, bool)
 	SetHost(string)
 	ActiveUser(host string) (string, bool)
 	SetActiveUser(host, user string)
 	UnsetActiveUser(host string)
 	DefaultRepository() (repository.Repository, bool)
+	ConfiguredRepository() (repository.Repository, bool)
 	SetDefaultRepository(repository.Repository)
 	Write() error
 }
@@ -29,10 +31,16 @@ func (c Environment) Host() string {
 	return c.Config.Host()
 }
 
+func (c Environment) ConfiguredHost() (string, bool) { return c.Config.ConfiguredHost() }
+
 func (c Environment) DefaultRepository() (repository.Repository, bool) {
 	if value, ok := c.LookupEnv("DH_REPO"); ok && value != "" {
 		r, err := repository.Parse(value, c.Host())
 		return r, err == nil
 	}
 	return c.Config.DefaultRepository()
+}
+
+func (c Environment) ConfiguredRepository() (repository.Repository, bool) {
+	return c.Config.ConfiguredRepository()
 }

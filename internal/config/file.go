@@ -62,6 +62,9 @@ func (c *File) Host() string {
 	}
 	return DefaultHost
 }
+func (c *File) ConfiguredHost() (string, bool) {
+	return c.data.DefaultHost, c.data.DefaultHost != ""
+}
 func (c *File) SetHost(host string) { c.data.DefaultHost = host }
 func (c *File) ActiveUser(host string) (string, bool) {
 	v, ok := c.data.ActiveUsers[host]
@@ -74,6 +77,9 @@ func (c *File) DefaultRepository() (repository.Repository, bool) {
 		return repository.Repository{}, false
 	}
 	return *c.data.DefaultRepository, true
+}
+func (c *File) ConfiguredRepository() (repository.Repository, bool) {
+	return c.DefaultRepository()
 }
 func (c *File) SetDefaultRepository(r repository.Repository) { c.data.DefaultRepository = &r }
 
