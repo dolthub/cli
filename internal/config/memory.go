@@ -18,6 +18,9 @@ func (c *Memory) Host() string {
 	}
 	return DefaultHost
 }
+func (c *Memory) ConfiguredHost() (string, bool) {
+	return c.DefaultHost, c.DefaultHost != ""
+}
 func (c *Memory) SetHost(v string)                   { c.DefaultHost = v }
 func (c *Memory) ActiveUser(h string) (string, bool) { v, ok := c.Users[h]; return v, ok }
 func (c *Memory) SetActiveUser(h, u string)          { c.Users[h] = u }
@@ -27,6 +30,9 @@ func (c *Memory) DefaultRepository() (repository.Repository, bool) {
 		return repository.Repository{}, false
 	}
 	return *c.Repo, true
+}
+func (c *Memory) ConfiguredRepository() (repository.Repository, bool) {
+	return c.DefaultRepository()
 }
 func (c *Memory) SetDefaultRepository(r repository.Repository) { c.Repo = &r }
 func (c *Memory) Write() error                                 { c.Writes++; return c.WriteErr }

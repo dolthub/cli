@@ -7,6 +7,11 @@ import (
 
 var ErrNotFound = errors.New("credential not found")
 
+// ErrCredentialStoreUnavailable indicates that the platform credential
+// manager could not be accessed. Callers which are about to replace a stale
+// credential may recover by writing through a configured fallback store.
+var ErrCredentialStoreUnavailable = errors.New("system credential store is unavailable")
+
 type Source string
 
 const (
