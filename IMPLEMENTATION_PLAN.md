@@ -88,7 +88,7 @@ one is independently testable and leaves the existing command surface working.
 | ---: | --- | --- |
 | 0.1 | `core/api-client` | Add generic request construction, POST/PATCH JSON bodies, typed success-envelope decoding, pagination metadata, response limits, safe path escaping, and same-origin URL validation. Preserve `CurrentUser`. |
 | 0.2 | `core/api-models` | Add v2 DTOs and request types for Database, Branch, Tag, Release, Pull, PullComment, QueryResult, Operation, ImportUpload, and their request bodies. Keep JSON field names aligned with OpenAPI. |
-| 0.3 | `core/database-resolver` | Resolve `[HOST/]OWNER/DB` from `-R/--repo`, `DH_REPO`, config, and recognized local Dolt remotes. Keep resolution lazy and injectable. Do not add a `db` command yet. |
+| 0.3 | `core/database-resolver` | Resolve `[HOST/]OWNER/DB` from `-R/--db`, `DH_REPO`, config, and recognized local Dolt remotes. Keep resolution lazy and injectable. Do not add a `db` command yet. |
 | 0.4 | `core/output` | Add table rendering and `gh`-style `--json`, `--jq`, and `--template` support with explicit per-resource field lists. |
 | 0.5 | `core/pagination` | Add a cursor pager which treats page tokens as opaque, stops at `--limit`, handles cancellation, and detects a repeated token. |
 
@@ -158,7 +158,7 @@ and registers the `operation` parent group.
 
 ### Phase 1.3: `db view`
 
-- Accept at most one positional `[HOST/]OWNER/DATABASE` and `-R/--repo` as an
+- Accept at most one positional `[HOST/]OWNER/DATABASE` and `-R/--db` as an
   alternative. Reject using both. With neither, use the shared resolver.
 - `--web` opens the database root URL and makes no API request. It is mutually
   exclusive with `--forks`, `--json`, `--jq`, and `--template`.
@@ -181,7 +181,7 @@ and registers the `operation` parent group.
   accept `--pull NUMBER` and `--branch NAME`; these target selectors are
   mutually exclusive.
 - Resolve the database exactly as other database-scoped commands do, including
-  `-R/--repo`. Make no API request.
+  `-R/--db`. Make no API request.
 - Construct only these URL shapes, escaping every dynamic path segment:
   - database: `/repositories/{owner}/{database}`
   - pull request: `/repositories/{owner}/{database}/pulls/{number}`
@@ -238,7 +238,7 @@ limited to commands with direct `gh` equivalents.
 | 2.3 | `pr/list` | `dh pr list` | `listPulls` | Direct counterpart to `gh pr list`; state filtering is client-side. |
 | 2.4 | `operation/list` | `dh operation list` | `listOperations` | Dolt operation counterpart to `gh run list`. |
 
-The three typed commands are repository-scoped and accept `-R/--repo`.
+The three typed commands are database-scoped and accept `-R/--db`.
 Paginated commands accept `--limit N`, defaulting to 30, and reject values below 1 as a
 usage error. They preserve backend order, pass `meta.next_page_token` back as
 an opaque `page_token`, stop without another request once the limit is met,

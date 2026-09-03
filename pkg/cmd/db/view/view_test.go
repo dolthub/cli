@@ -80,7 +80,7 @@ func TestViewWebMakesNoAPIRequestAndEscapesSegments(t *testing.T) {
 }
 
 func TestViewFlagValidation(t *testing.T) {
-	for _, args := range [][]string{{"one/repo", "two/repo"}, {"one/repo", "--repo", "two/repo"}, {"--web", "--forks"}, {"--web", "--json", "owner"}} {
+	for _, args := range [][]string{{"one/repo", "two/repo"}, {"one/repo", "--db", "two/repo"}, {"--web", "--forks"}, {"--web", "--json", "owner"}} {
 		cmd := NewCmdView(&cmdutil.Factory{}, func(context.Context, *Options) error { return nil })
 		cmd.SetArgs(args)
 		err := cmd.Execute()

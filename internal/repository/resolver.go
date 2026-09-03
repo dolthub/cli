@@ -56,11 +56,11 @@ func (r Resolver) Resolve(ctx context.Context, explicit string) (Repository, err
 	case 1:
 		return candidates[0], nil
 	case 0:
-		return Repository{}, errors.New("could not determine a DoltHub database; use --repo, DH_REPO, or 'dh config set repo OWNER/REPO'")
+		return Repository{}, errors.New("could not determine a DoltHub database; use --db, DH_REPO, or 'dh config set repo OWNER/REPO'")
 	}
 
 	if r.CanPrompt == nil || !r.CanPrompt() || r.Select == nil {
-		return Repository{}, errors.New("multiple DoltHub remotes found; use --repo to select a database")
+		return Repository{}, errors.New("multiple DoltHub remotes found; use --db to select a database")
 	}
 	labels := make([]string, len(candidates))
 	for i, candidate := range candidates {

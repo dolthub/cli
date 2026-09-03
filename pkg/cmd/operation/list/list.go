@@ -39,7 +39,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 		}
 		return nil
 	}
-	c.Flags().StringVarP(&o.Repository, "repo", "R", "", "Select a database repository using [HOST/]OWNER/REPO")
+	cmdutil.AddDatabaseFlag(c, &o.Repository)
 	c.Flags().IntVar(&o.Limit, "limit", 30, "Maximum number of operations")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
 	return c
