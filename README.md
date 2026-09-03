@@ -27,11 +27,11 @@ Run the test suite with `make test` and format Go sources with `make fmt`.
 ## Development authentication
 
 Browser authentication uses DoltHub OAuth 2.0 authorization code flow with
-PKCE. Until release builds carry the shared, DoltHub-owned public client ID,
-provide a development OAuth application's public client ID at runtime:
+PKCE. To authenticate against a non-production environment, supply its host
+and public OAuth client ID at runtime:
 
 ```sh
-DH_HOST=dev.dolthub.com \
+DH_HOST=your-dolthub-host \
 DH_OAUTH_CLIENT_ID=your-public-client-id \
 dh auth login
 ```

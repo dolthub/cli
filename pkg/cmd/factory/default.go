@@ -23,11 +23,13 @@ import (
 	"github.com/dolthub/cli/pkg/iostreams"
 )
 
-const OAuthClientIDEnv = "DH_OAUTH_CLIENT_ID"
+const (
+	OAuthClientIDEnv = "DH_OAUTH_CLIENT_ID"
+	productionHost   = "www.dolthub.com"
+)
 
 // productionOAuthClientID is populated with -X for release builds once the
-// shared, DoltHub-owned public OAuth application is registered. Development
-// builds use DH_OAUTH_CLIENT_ID and never embed a personal application ID.
+// shared, DoltHub-owned production OAuth application is registered.
 var productionOAuthClientID string
 
 // New constructs the production command factory from process-level inputs.
@@ -137,7 +139,7 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 }
 
 func oauthClient(appVersion, host string, lookupEnv func(string) (string, bool)) (*oauth.Client, error) {
-	clientID, err := oauthClientID(lookupEnv)
+	clientID, err := oauthClientID(host, lookupEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -149,16 +151,16 @@ func oauthClient(appVersion, host string, lookupEnv func(string) (string, bool))
 	return oauth.NewClient(httpClient, origin, clientID)
 }
 
-func oauthClientID(lookupEnv func(string) (string, bool)) (string, error) {
+func oauthClientID(host string, lookupEnv func(string) (string, bool)) (string, error) {
 	if lookupEnv != nil {
 		if clientID, ok := lookupEnv(OAuthClientIDEnv); ok && strings.TrimSpace(clientID) != "" {
 			return strings.TrimSpace(clientID), nil
 		}
 	}
-	if strings.TrimSpace(productionOAuthClientID) != "" {
+	if strings.EqualFold(strings.TrimSpace(host), productionHost) && strings.TrimSpace(productionOAuthClientID) != "" {
 		return strings.TrimSpace(productionOAuthClientID), nil
 	}
-	return "", fmt.Errorf("OAuth client ID is not configured: set %s for development", OAuthClientIDEnv)
+	return "", fmt.Errorf("OAuth client ID is not configured for %s", host)
 }
 
 func webOrigin(host string) (*url.URL, error) {

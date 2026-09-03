@@ -88,7 +88,10 @@ dh
     fork [DATABASE]
     forks [DATABASE]
     import FILE
+    list [OWNER]
     view [DATABASE]
+  org
+    list
   sql [QUERY]
   tag
     create NAME
@@ -233,6 +236,18 @@ Behavior:
 - Do not offer `gh` flags such as `--add-readme`, `--gitignore`, `--license`,
   `--source`, `--push`, or `--team`; v2 cannot implement them.
 - Print `[HOST/]OWNER/NAME` and its web URL after creation.
+
+### `dh db list`
+
+```text
+dh db list [OWNER] [--limit N] [--visibility {public|private}]
+```
+
+Blocked on a new cursor-paginated v2 `listDatabases` operation, proposed as
+`GET /api/v2/databases?owner=OWNER&page_token=...`. With no OWNER, use the
+authenticated user. OWNER may identify a user or organization. This is the
+counterpart to `gh repo list [OWNER]`; only filters supported by the eventual
+v2 contract should be exposed.
 
 ### `dh db view`
 
@@ -542,6 +557,18 @@ dh operation watch ID [--interval DURATION]
 `operation list` includes Dolt CI jobs even though v2 currently has no command
 to create or configure them.
 
+### `dh org list`
+
+```text
+dh org list [--limit N]
+```
+
+Blocked on a new cursor-paginated v2 `listCurrentUserOrganizations` operation,
+proposed as `GET /api/v2/user/organizations?page_token=...`. It lists
+organizations the authenticated user belongs to and corresponds to `gh org
+list`. Database listing for an organization remains `dh db list OWNER`; no
+separate `dh org list-dbs` command is needed.
+
 ## Typed API client methods
 
 The initial `internal/dolthub.Client` should grow to the following surface. The
@@ -597,12 +624,12 @@ following the server-provided `href` is preferred.
 | `browse` | Implement | Pure URL construction; no API gap. |
 | `completion` | Implement | Cobra can generate it locally. |
 | `config` | Core parity | Get/set/list are local concerns. |
-| `repo` | Use `dh db`: create/view/fork plus DoltHub import/forks | V2 supports create, get, fork, fork listing, and import; `db` matches DoltHub terminology. |
+| `repo` | Use `dh db`: create/view/fork plus DoltHub list/import/forks | Current v2 supports create, get, fork, fork listing, and import; list is blocked on a proposed endpoint. |
 | `pr` | Create/list/view/edit/close/reopen/comment/merge | Direct v2 operations exist. |
 | `release` | Create/list/view-by-listing | V2 supports create/list; view can scan by tag. |
 | `status` | Defer | No user dashboard, notification, or cross-repository PR endpoint. |
 | `search` | Omit | No v2 search endpoints. |
-| `org` | Omit | Owner strings may name organizations, but v2 has no organization resources. |
+| `org` | Plan `org list` | Blocked on a proposed current-user organization-membership endpoint. |
 | `issue` | Omit | DoltHub issues are not exposed by v2. |
 | `discussion` | Omit | No v2 discussion resources. |
 | `alias`, `extension` | Defer | Local extensibility can be added later and is not needed for API coverage. |
@@ -619,8 +646,9 @@ Specific familiar `gh` commands which cannot currently be implemented include:
   lock/unlock, inline comments, and comment editing/deletion.
 - `release edit`, `delete`, upload/download/delete assets, and verification.
 - Branch or tag deletion/renaming and commit/history/log commands.
-- Database stars, collaborators, permissions, default-branch management, and
-  repository enumeration for the authenticated user or an organization.
+- Database stars, collaborators, permissions, and default-branch management.
+- Database enumeration and current-user organization memberships until their
+  proposed v2 list operations are available.
 - Canceling an operation even though `Operation.cancelable` exists. V2 has no
   cancel endpoint.
 
@@ -628,20 +656,10 @@ These omissions should remain visible in planning. A missing typed command is a
 CLI backlog item; a missing v2 operation is an API backlog item and should not
 be worked around with private RPCs.
 
-## Suggested delivery order
+## Delivery plan
 
-1. Shared API client: request bodies, PATCH, envelopes, pagination, JSON export,
-   repository resolution, and operation waiting.
-2. Read-only slice: `db view`, `branch list`, `tag list`, `pr list/view`, and
-   `release list`.
-3. Low-level and local UX: `api`, `browse`, `completion`, `config list`.
-4. Synchronous mutations: `db create`, branch/tag/release create, and PR
-   create/edit/close/reopen/comment.
-5. Async framework and commands: operation list/view/watch, `db fork`, PR
-   merge, and SQL writes.
-6. SQL reads and high-level multipart import.
-
-Each slice should add command constructor tests, run-function tests, HTTP
-contract tests keyed to the OpenAPI operation, TTY/non-TTY output tests, and
-JSON-field tests. The command tree should only advertise a command once its
+See [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) for the phased delivery
+order, branch names, pull request boundaries, dependencies, and definition of
+done. Every executable leaf command is implemented on its own branch and in its
+own pull request. The command tree only advertises a command once its
 implementation is complete.

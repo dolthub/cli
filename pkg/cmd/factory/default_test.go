@@ -34,11 +34,11 @@ func TestNew(t *testing.T) {
 }
 
 func TestAPIBaseURL(t *testing.T) {
-	base, err := apiBaseURL("dev.dolthub.com")
+	base, err := apiBaseURL(productionHost)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := base.String(), "https://dev.dolthub.com/api/v2/"; got != want {
+	if got, want := base.String(), "https://www.dolthub.com/api/v2/"; got != want {
 		t.Fatalf("base = %q, want %q", got, want)
 	}
 	for _, host := range []string{"", "https://example.com", "user@example.com", "example.com/path", "example.com:8443"} {
@@ -48,38 +48,39 @@ func TestAPIBaseURL(t *testing.T) {
 	}
 }
 
-func TestOAuthClientIDUsesDevelopmentEnvironment(t *testing.T) {
+func TestOAuthClientIDSelection(t *testing.T) {
 	lookup := func(name string) (string, bool) {
 		if name == OAuthClientIDEnv {
-			return " dev-public-client ", true
+			return " override-public-client ", true
 		}
 		return "", false
 	}
-	clientID, err := oauthClientID(lookup)
+	clientID, err := oauthClientID("example.test", lookup)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if clientID != "dev-public-client" {
+	if clientID != "override-public-client" {
 		t.Fatalf("client ID = %q", clientID)
 	}
-	if _, err := oauthClientID(func(string) (string, bool) { return "", false }); err == nil || !strings.Contains(err.Error(), OAuthClientIDEnv) {
+
+	if _, err := oauthClientID("www.dolthub.com", func(string) (string, bool) { return "", false }); err == nil || !strings.Contains(err.Error(), "www.dolthub.com") {
 		t.Fatalf("missing client ID error = %v", err)
 	}
 }
 
-func TestProductionAuthenticatorReportsMissingDevelopmentClientID(t *testing.T) {
+func TestProductionAuthenticatorReportsMissingProductionClientID(t *testing.T) {
 	streams, _, _, _ := iostreams.NewTest()
 	f := New("test", streams)
 	f.LookupEnv = func(string) (string, bool) { return "", false }
-	_, err := f.Authenticator.Login(context.Background(), "dev.dolthub.com")
-	if err == nil || !strings.Contains(err.Error(), OAuthClientIDEnv) {
+	_, err := f.Authenticator.Login(context.Background(), "www.dolthub.com")
+	if err == nil || !strings.Contains(err.Error(), "www.dolthub.com") {
 		t.Fatalf("login error = %v", err)
 	}
 }
 
-func TestOAuthClientUsesConfiguredDevelopmentHost(t *testing.T) {
-	client, err := oauthClient("test", "dev.dolthub.com", func(name string) (string, bool) {
-		return "dev-public-client", name == OAuthClientIDEnv
+func TestOAuthClientUsesConfiguredHostAndClientID(t *testing.T) {
+	client, err := oauthClient("test", "example.test", func(name string) (string, bool) {
+		return "configured-public-client", name == OAuthClientIDEnv
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -88,10 +89,10 @@ func TestOAuthClientUsesConfiguredDevelopmentHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if authorization.URL.Host != "dev.dolthub.com" || authorization.URL.Path != "/oauth/authorize" {
+	if authorization.URL.Host != "example.test" || authorization.URL.Path != "/oauth/authorize" {
 		t.Fatalf("authorization URL = %s", authorization.URL)
 	}
-	if authorization.URL.Query().Get("client_id") != "dev-public-client" {
+	if authorization.URL.Query().Get("client_id") != "configured-public-client" {
 		t.Fatalf("authorization query = %v", authorization.URL.Query())
 	}
 }
@@ -112,7 +113,7 @@ func TestRefreshTokenUsesConfiguredHostAndPublicClient(t *testing.T) {
 	streams, _, _, _ := iostreams.NewTest()
 	f := New("test", streams)
 	cfg := config.NewMemory()
-	cfg.SetHost("dev.dolthub.com")
+	cfg.SetHost("example.test")
 	f.Config = func() (config.Config, error) { return cfg, nil }
 	f.LookupEnv = func(name string) (string, bool) {
 		if name == OAuthClientIDEnv {
@@ -124,7 +125,7 @@ func TestRefreshTokenUsesConfiguredHostAndPublicClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if token.AccessToken != "new-access" || requestURL != "https://dev.dolthub.com/api/oauth/access_token" {
+	if token.AccessToken != "new-access" || requestURL != "https://example.test/api/oauth/access_token" {
 		t.Fatalf("token = %#v, URL = %q", token, requestURL)
 	}
 	if form.Get("client_id") != "dev-public-client" || form.Get("refresh_token") != "old-refresh-secret" || form.Get("client_secret") != "" {
@@ -149,10 +150,10 @@ func TestHTTPClientRefreshesAndPersistsStoredCredential(t *testing.T) {
 	streams, _, _, _ := iostreams.NewTest()
 	f := New("test", streams)
 	cfg := config.NewMemory()
-	cfg.SetHost("dev.dolthub.com")
-	cfg.SetActiveUser("dev.dolthub.com", "alice")
+	cfg.SetHost("example.test")
+	cfg.SetActiveUser("example.test", "alice")
 	store := credentials.NewMemoryStore()
-	if err := credentials.SetOAuthToken(store, "dev.dolthub.com", "alice", credentials.OAuthToken{AccessToken: "expired-access", RefreshToken: "old-refresh", TokenType: "Bearer", ExpiresAt: time.Now().Add(-time.Hour)}); err != nil {
+	if err := credentials.SetOAuthToken(store, "example.test", "alice", credentials.OAuthToken{AccessToken: "expired-access", RefreshToken: "old-refresh", TokenType: "Bearer", ExpiresAt: time.Now().Add(-time.Hour)}); err != nil {
 		t.Fatal(err)
 	}
 	f.Config = func() (config.Config, error) { return cfg, nil }
@@ -167,14 +168,14 @@ func TestHTTPClientRefreshesAndPersistsStoredCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req, _ := http.NewRequest(http.MethodGet, "https://dev.dolthub.com/api/v2/user", nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://example.test/api/v2/user", nil)
 	if _, err := client.Do(req); err != nil {
 		t.Fatal(err)
 	}
 	if apiAuthorization != "Bearer rotated-access" {
 		t.Fatalf("API authorization = %q", apiAuthorization)
 	}
-	rotated, err := credentials.GetOAuthToken(store, "dev.dolthub.com", "alice")
+	rotated, err := credentials.GetOAuthToken(store, "example.test", "alice")
 	if err != nil || rotated.RefreshToken != "rotated-refresh" {
 		t.Fatalf("stored token = %#v, error = %v", rotated, err)
 	}
