@@ -47,6 +47,9 @@ func TestFallbackStoreExplainsUnavailableKeyringWhenFileCredentialIsMissing(t *t
 	if !errors.Is(err, keyringErr) {
 		t.Fatalf("error = %v, want wrapped keyring error", err)
 	}
+	if !errors.Is(err, ErrCredentialStoreUnavailable) {
+		t.Fatalf("error = %v, want ErrCredentialStoreUnavailable", err)
+	}
 	for _, text := range []string{"no file credential exists", "system credential store is unavailable", "dh auth login --hostname dev.example", "DH_TOKEN"} {
 		if !strings.Contains(err.Error(), text) {
 			t.Fatalf("error %q does not contain %q", err, text)

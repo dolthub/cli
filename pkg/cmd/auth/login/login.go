@@ -57,7 +57,7 @@ func loginRun(ctx context.Context, opts *Options) error {
 		previousCredential, err = credentials.GetStored(opts.Credentials, host, previousUser)
 		if err == nil {
 			hadPreviousToken = true
-		} else if !errors.Is(err, credentials.ErrNotFound) {
+		} else if !errors.Is(err, credentials.ErrNotFound) && !errors.Is(err, credentials.ErrCredentialStoreUnavailable) {
 			return fmt.Errorf("load existing credential: %w", err)
 		}
 	}

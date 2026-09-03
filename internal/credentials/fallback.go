@@ -43,7 +43,7 @@ func (s *FallbackStore) getStored(host, user string) (Stored, error) {
 		if errors.Is(keyringErr, ErrNotFound) {
 			return Stored{}, ErrNotFound
 		}
-		return Stored{}, fmt.Errorf("no file credential exists for %s and the system credential store is unavailable; run 'dh auth login --hostname %s' or set DH_TOKEN: %w", host, host, keyringErr)
+		return Stored{}, fmt.Errorf("no file credential exists for %s and the %w; run 'dh auth login --hostname %s' or set DH_TOKEN: %w", host, ErrCredentialStoreUnavailable, host, keyringErr)
 	}
 	return Stored{Secret: secret, Source: SourceKeyring}, nil
 }

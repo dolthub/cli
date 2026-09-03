@@ -42,6 +42,38 @@ func TestLoginWarnsWhenKeyringFallsBackToFile(t *testing.T) {
 	}
 }
 
+func TestLoginRepairsStaleActiveUserWhenKeyringIsUnavailable(t *testing.T) {
+	streams, _, out, errOut := iostreams.NewTest()
+	cfg := config.NewMemory()
+	cfg.SetActiveUser(config.DefaultHost, "alice")
+	keyringErr := errors.New("The name is not activatable")
+	keyring := credentials.NewMemoryStore()
+	keyring.Err = keyringErr
+	file := credentials.NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := credentials.NewFallbackStore(keyring, file)
+	opts := &Options{
+		IO:          streams,
+		Config:      func() (config.Config, error) { return cfg, nil },
+		Credentials: store,
+		Authenticator: fakeAuth{result: authflow.LoginResult{
+			Host: config.DefaultHost, Username: "alice",
+			Credential: credentials.OAuthToken{AccessToken: "new-token"},
+		}},
+		LookupEnv: noEnv,
+	}
+
+	if err := loginRun(context.Background(), opts); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := credentials.GetStoredOAuthToken(store, config.DefaultHost, "alice")
+	if err != nil || stored.Source != credentials.SourceFile || stored.Token.AccessToken != "new-token" {
+		t.Fatalf("stored = %#v, error = %v", stored, err)
+	}
+	if !strings.Contains(out.String(), "Logged in") || !strings.Contains(errOut.String(), "saved unencrypted") {
+		t.Fatalf("stdout = %q, stderr = %q", out.String(), errOut.String())
+	}
+}
+
 func (f fakeAuth) Login(context.Context, string) (authflow.LoginResult, error) {
 	return f.result, f.err
 }
