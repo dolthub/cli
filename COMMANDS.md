@@ -1,6 +1,6 @@
 # `dh` command and API plan
 
-Status: proposed
+Status: active — Phases 0 and 1 implemented; Phase 2 specified
 
 This document defines the intended command surface for `dh`. It is based on:
 
@@ -99,8 +99,9 @@ dh
   version
 ```
 
-`auth login`, `auth logout`, `auth status`, `config get`, `config set`, and
-`version` already exist. The rest are planned.
+`auth login`, `auth logout`, `auth status`, `browse`, `completion`,
+`config get`, `config list`, `config set`, `db view`, `operation view`, and
+`version` are implemented. The rest are planned.
 
 ## Global conventions
 
@@ -318,12 +319,14 @@ integration is designed.
 ### `dh db forks`
 
 ```text
-dh db forks [DATABASE]
+dh db forks [DATABASE] [-R REPOSITORY]
 ```
 
 Calls `listForks`. This is a DoltHub-specific addition because fork-network
 topology is a first-class database concept and v2 exposes it directly. It lists
 immediate children only; `Database.fork_network_count` is the transitive count.
+The endpoint returns the complete bounded list in one response, so this command
+does not expose `--limit`. Structured fields are `owner` and `name`.
 
 ### `dh db import`
 
@@ -370,7 +373,7 @@ default branch, so no implicit `main` should be baked into the client.
 ### `dh branch`
 
 ```text
-dh branch list [-R REPOSITORY]
+dh branch list [-R REPOSITORY] [--limit N]
 dh branch create NAME (--from-branch NAME | --from-commit SHA)
 ```
 
@@ -379,15 +382,16 @@ dh branch create NAME (--from-branch NAME | --from-commit SHA)
 | `branch list` | `listBranches` | `GET .../branches?page_token=...` |
 | `branch create` | `createBranch` | `POST .../branches` with `{ name, from: { branch } }` or `{ name, from: { commit } }` |
 
-`branch list` follows cursor pagination and shows name, head commit SHA, and
-last update time. The create source flags are mutually exclusive and exactly
-mirror the API's discriminated union. There is no view, rename, or delete
-command because v2 has no corresponding operation.
+`branch list` defaults to `--limit 30`, follows cursor pagination, and shows
+name, head commit SHA, and last update time. Structured fields are `name`,
+`head_commit_sha`, and `last_updated_at`. The create source flags are mutually
+exclusive and exactly mirror the API's discriminated union. There is no view,
+rename, or delete command because v2 has no corresponding operation.
 
 ### `dh tag`
 
 ```text
-dh tag list [-R REPOSITORY]
+dh tag list [-R REPOSITORY] [--limit N]
 dh tag create NAME (--from-branch NAME | --from-commit SHA) [--message TEXT]
 ```
 
@@ -397,7 +401,9 @@ dh tag create NAME (--from-branch NAME | --from-commit SHA) [--message TEXT]
 | `tag create` | `createTag` | `POST .../tags` with `{ name, from, message? }` |
 
 Omitting `--message` creates a lightweight tag; supplying it creates an
-annotated tag. There is no view or delete command in v2.
+annotated tag. `tag list` defaults to `--limit 30`; its structured fields are
+`name`, `commit_sha`, `message`, and `tagged_at`. There is no view or delete
+command in v2.
 
 ### `dh sql`
 
@@ -437,12 +443,16 @@ seconds.
 ### `dh pr list`
 
 ```text
-dh pr list [--state {open|closed|merged|all}] [--limit N]
+dh pr list [-R REPOSITORY]
+           [--state {open|closed|merged|all}] [--limit N]
 ```
 
-Calls `listPulls` and follows cursor pagination. API v2 provides no server-side
-filters, so `--state` is applied client-side. The summary fields are pull
-number, title, description, state, created time, and creator. Do not copy `gh`
+Calls `listPulls` and follows cursor pagination. `--limit` defaults to 30 and
+`--state` defaults to `open`. API v2 provides no server-side filters, so
+`--state` is applied client-side before the limit is counted; the command
+continues fetching pages until it has enough matching rows or reaches the end.
+The structured fields are `pull_number`, `title`, `description`, `state`,
+`created_at`, and `creator`. Do not copy `gh`
 filters for author, assignee, labels, reviews, checks, base, head, search, or
 draft state because v2 does not expose those concepts.
 
@@ -521,11 +531,12 @@ commit-title, commit-message, auto-merge, branch deletion, or admin flags.
 ### `dh release list`
 
 ```text
-dh release list [--limit N]
+dh release list [-R REPOSITORY] [--limit N]
 ```
 
-Calls `listReleases` and follows cursor pagination. Fields are tag, title,
-commit SHA, description, created time, and updated time. V2 has no draft,
+Calls `listReleases`, defaults to `--limit 30`, and follows cursor pagination.
+Structured fields are `tag`, `title`, `commit_sha`, `description`,
+`created_at`, and `updated_at`. V2 has no draft,
 prerelease, author, asset, or latest-release concepts.
 
 ### `dh release create`
@@ -563,7 +574,7 @@ view`. If the server later adds `getRelease`, switch without changing the CLI.
 ### `dh operation`
 
 ```text
-dh operation list [--limit N]
+dh operation list [-R REPOSITORY] [--limit N]
 dh operation view ID
 dh operation watch ID [--interval DURATION]
 ```
@@ -574,8 +585,11 @@ dh operation watch ID [--interval DURATION]
 | `operation view` | `getOperation` | Operation ID is accepted as opaque input and encoded safely. |
 | `operation watch` | `getOperation` | Poll until terminal state; return failure for `failed`. |
 
-`operation list` includes Dolt CI jobs even though v2 currently has no command
-to create or configure them.
+`operation list` defaults to `--limit 30`, is authentication-optional like the
+other repository-scoped public reads, and includes Dolt CI jobs even though v2
+currently has no command to create or configure them. Structured fields match
+`operation view`: `id`, `type`, `status`, `created_at`, `cancelable`, `error`,
+and `result`.
 
 `operation view` requires authentication and treats the ID as one opaque path
 segment, including when it contains slashes. Its structured fields are `id`,

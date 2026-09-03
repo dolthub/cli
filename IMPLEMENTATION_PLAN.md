@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: active — Phase 0 merged; Phase 1 is next
+Status: active — Phases 0 and 1 merged; Phase 2 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -97,7 +97,17 @@ v2 JSON operation, paginate a list, and render human or structured output.
 
 ## Phase 1: local and bounded read commands
 
-Status: next. These have no mutation semantics and require no pagination.
+Status: complete. The five-PR stack was merged on 2026-09-03:
+
+| Order | Branch | Pull request |
+| ---: | --- | --- |
+| 1.1 | `completion` | [#20](https://github.com/dolthub/cli/pull/20) |
+| 1.2 | `config/list` | [#21](https://github.com/dolthub/cli/pull/21) |
+| 1.3 | `db/view` | [#22](https://github.com/dolthub/cli/pull/22) |
+| 1.4 | `browse` | [#23](https://github.com/dolthub/cli/pull/23) |
+| 1.5 | `operation/view` | [#24](https://github.com/dolthub/cli/pull/24) |
+
+These have no mutation semantics and require no pagination.
 Most make no HTTP request or one simple GET; `db view --forks` makes one
 additional bounded request. They establish command conventions at low risk.
 
@@ -205,10 +215,24 @@ branches, public database reads work without login, authenticated reads work
 with stored or environment credentials, browser commands make no API calls,
 and the full stack passes the cross-platform test and lint workflows.
 
-## Phase 2: paginated read commands
+## Phase 2: list commands
 
-Start a new stack after Phase 1 merges. Each command exercises the same paging
-and output contract with a different resource shape.
+Status: next. Start a new six-PR stack from `main`:
+
+```text
+main
+  branch/list
+    tag/list
+      db/forks
+        release/list
+          pr/list
+            operation/list
+```
+
+Five commands exercise the same cursor and output contract with different
+resource shapes. `db forks` belongs here because it is also a list command,
+but v2 returns its complete, bounded result in one response and exposes no
+pagination token.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
@@ -219,8 +243,98 @@ and output contract with a different resource shape.
 | 2.5 | `pr/list` | `dh pr list` | `listPulls` | Creates the `pr` group; `--state` filtering is client-side because v2 has no filter parameter. |
 | 2.6 | `operation/list` | `dh operation list` | `listOperations` | Auth-optional repository-scoped operation history. |
 
-Phase 2 exit criterion: pagination and structured output conventions have been
-validated against every principal list envelope currently exposed by v2.
+All six commands are repository-scoped and accept `-R/--repo`. Paginated
+commands accept `--limit N`, defaulting to 30, and reject values below 1 as a
+usage error. They preserve backend order, pass `meta.next_page_token` back as
+an opaque `page_token`, stop without another request once the limit is met,
+and fail if a token repeats. An empty successful list exits zero and prints no
+rows. Public databases work anonymously; a configured credential is used when
+available for private databases.
+
+Human output uses uppercase aligned headers on a terminal and stable
+tab-separated rows without headers when piped. Times use RFC 3339 when present
+and `-` when absent. Structured output operates on the final collected list,
+supports `--json`, `--jq`, and `--template`, and uses the API's snake_case
+field names.
+
+### Phase 2.1: `branch list`
+
+- Create and register the `branch` parent group.
+- Call `listBranches` for the resolved repository and paginate to `--limit`.
+- Human columns are `NAME`, `HEAD`, and `UPDATED`.
+- Structured fields are `name`, `head_commit_sha`, and `last_updated_at`.
+- Test repository resolution, custom hosts, anonymous and authenticated reads,
+  escaped path segments, opaque multi-page cursors, truncation at the limit,
+  empty results, RFC 9457 failures, both table modes, and every structured
+  field.
+
+### Phase 2.2: `tag list`
+
+- Create and register the `tag` parent group.
+- Call `listTags` and use the same paging and repository contract as branches.
+- Human columns are `NAME`, `COMMIT`, `MESSAGE`, and `TAGGED`; absent messages
+  and times render as `-`.
+- Structured fields are `name`, `commit_sha`, `message`, and `tagged_at`.
+- Reuse paging behavior rather than copying a command-local cursor loop. Test
+  annotated and lightweight tags in addition to the common list cases.
+
+### Phase 2.3: `db forks`
+
+- Accept at most one positional `[HOST/]OWNER/DATABASE`; treat `-R/--repo` as
+  an alternative and reject using both.
+- Call `listForks` exactly once. It returns immediate children as
+  `DatabaseRef` values and is not paginated; do not expose `--limit`.
+- Human columns are `OWNER` and `NAME`. Structured fields are `owner` and
+  `name`.
+- Test argument precedence, one-request behavior, empty results, anonymous and
+  authenticated reads, table modes, structured output, and API errors.
+
+### Phase 2.4: `release list`
+
+- Create and register the `release` parent group.
+- Call `listReleases` and paginate to `--limit`.
+- Human columns are `TAG`, `TITLE`, `COMMIT`, `CREATED`, and `UPDATED`.
+  Description remains available in structured output rather than expanding
+  multiline markdown inside a table.
+- Structured fields are `tag`, `title`, `commit_sha`, `description`,
+  `created_at`, and `updated_at`.
+- Test multiline descriptions, pagination, limit boundaries, empty results,
+  table modes, structured output, and API errors.
+
+### Phase 2.5: `pr list`
+
+- Create and register the `pr` parent group.
+- Accept `--state open|closed|merged|all`, defaulting to `open`. Reject any
+  other value as a usage error.
+- Because `listPulls` has no filter parameter, retain backend order while
+  filtering each page locally. Continue fetching until `--limit` matching
+  items have been collected or pagination ends; nonmatching items do not count
+  toward the limit.
+- Human columns are `NUMBER`, `TITLE`, `STATE`, `CREATOR`, and `CREATED`.
+- Structured fields are `pull_number`, `title`, `description`, `state`,
+  `created_at`, and `creator`.
+- Test every state, the default, `all`, pages containing only nonmatching
+  items, filtered limit boundaries, repeated tokens, empty results, table
+  modes, structured output, and API errors.
+
+### Phase 2.6: `operation list`
+
+- Extend the existing `operation` parent group; unlike `operation view`, this
+  command is repository-scoped and authentication is optional.
+- Call `listOperations` for the resolved repository and paginate to `--limit`.
+  Do not add client-side type or status filters in this phase.
+- Human columns are `ID`, `TYPE`, `STATUS`, `CREATED`, and `CANCELABLE`. Error
+  and dynamic result payloads remain available in structured output.
+- Structured fields are `id`, `type`, `status`, `created_at`, `cancelable`,
+  `error`, and `result`.
+- Test all statuses and operation types, slash-containing opaque IDs, dynamic
+  result and error JSON, pagination, anonymous and authenticated reads, table
+  modes, structured output, and API errors.
+
+Phase 2 exit criterion: all six commands are registered on their own branches;
+the five cursor-paginated endpoints satisfy the shared paging contract;
+`db forks` remains a single request; public and private reads behave correctly;
+and the full stack passes cross-platform tests, `go vet`, and lint.
 
 ## Phase 3: composed reads
 
