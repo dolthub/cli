@@ -84,6 +84,12 @@ func apiRun(ctx context.Context, o *Options) error {
 		}
 	}
 	endpoint := o.Endpoint
+	if o.Input != "" {
+		endpoint, e = addFieldQuery(endpoint, append(append([]string{}, o.RawFields...), o.TypedFields...))
+		if e != nil {
+			return e
+		}
+	}
 	pages := [][]byte{}
 	seen := map[string]bool{}
 	for {
@@ -131,9 +137,6 @@ func apiRun(ctx context.Context, o *Options) error {
 }
 
 func requestBody(o *Options) ([]byte, error) {
-	if o.Input != "" && (len(o.RawFields) > 0 || len(o.TypedFields) > 0) {
-		return nil, cmdutil.FlagErrorf("--input cannot be combined with fields")
-	}
 	if o.Input != "" {
 		if o.Input == "-" {
 			return io.ReadAll(o.IO.In)
@@ -159,6 +162,23 @@ func requestBody(o *Options) ([]byte, error) {
 		m[k] = typed(v)
 	}
 	return json.Marshal(m)
+}
+
+func addFieldQuery(endpoint string, fields []string) (string, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	for _, value := range fields {
+		key, item, err := field(value)
+		if err != nil {
+			return "", err
+		}
+		q.Add(key, item)
+	}
+	u.RawQuery = q.Encode()
+	return u.String(), nil
 }
 func field(v string) (string, string, error) {
 	k, x, ok := strings.Cut(v, "=")
@@ -221,7 +241,10 @@ func formatOutput(o *Options, b []byte) error {
 		return t.Flush()
 	}
 	if len(b) > 0 {
-		_, e := o.IO.Out.Write(append(b, '\n'))
+		if b[len(b)-1] != '\n' {
+			b = append(b, '\n')
+		}
+		_, e := o.IO.Out.Write(b)
 		return e
 	}
 	return nil

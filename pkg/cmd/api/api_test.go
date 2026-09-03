@@ -30,6 +30,16 @@ func TestPaginationHelpers(t *testing.T) {
 	}
 }
 
+func TestInputFieldsBecomeQueryParameters(t *testing.T) {
+	got, err := addFieldQuery("databases/o/r/branches?existing=yes", []string{"page=opaque/+=="})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "databases/o/r/branches?existing=yes&page=opaque%2F%2B%3D%3D" {
+		t.Fatalf("endpoint=%q", got)
+	}
+}
+
 func TestCommandFlags(t *testing.T) {
 	var got *Options
 	c := NewCmdAPI(nilFactory(), func(_ context.Context, o *Options) error { got = o; return nil })
