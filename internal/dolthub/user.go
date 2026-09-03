@@ -19,7 +19,7 @@ type User struct {
 
 // CurrentUser returns the authenticated DoltHub user.
 func (c *Client) CurrentUser(ctx context.Context) (User, error) {
-	var result envelope[User]
+	var result User
 	err := c.get(ctx, "user", &result)
-	return result.Data, err
+	return result, err
 }
