@@ -36,6 +36,31 @@ func TestFallbackStoreUsesFileWhenKeyringFails(t *testing.T) {
 	}
 }
 
+func TestFallbackStoreExplainsUnavailableKeyringWhenFileCredentialIsMissing(t *testing.T) {
+	keyringErr := errors.New("The name is not activatable")
+	keyring := NewMemoryStore()
+	keyring.Err = keyringErr
+	file := NewFileStore(filepath.Join(t.TempDir(), "credentials.json"))
+	store := NewFallbackStore(keyring, file)
+
+	_, err := store.GetStored("dev.example", "alice")
+	if !errors.Is(err, keyringErr) {
+		t.Fatalf("error = %v, want wrapped keyring error", err)
+	}
+	for _, text := range []string{"no file credential exists", "system credential store is unavailable", "dh auth login --hostname dev.example", "DH_TOKEN"} {
+		if !strings.Contains(err.Error(), text) {
+			t.Fatalf("error %q does not contain %q", err, text)
+		}
+	}
+}
+
+func TestFallbackStoreMissingCredentialRemainsNotFound(t *testing.T) {
+	store := NewFallbackStore(NewMemoryStore(), NewFileStore(filepath.Join(t.TempDir(), "credentials.json")))
+	if _, err := store.GetStored("example.com", "alice"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("error = %v, want ErrNotFound", err)
+	}
+}
+
 func TestFallbackStoreFailsSafelyWhenBothStoresFail(t *testing.T) {
 	secret := "credential-secret-must-not-leak"
 	keyring := NewMemoryStore()
