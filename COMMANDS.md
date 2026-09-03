@@ -59,7 +59,6 @@ dh
     status
   branch
     create NAME
-    list
   browse [NUMBER]
   completion {bash|fish|powershell|zsh}
   config
@@ -86,7 +85,6 @@ dh
   db
     create [OWNER/]NAME
     fork [DATABASE]
-    forks [DATABASE]
     import FILE
     list [OWNER]
     view [DATABASE]
@@ -95,7 +93,6 @@ dh
   sql [QUERY]
   tag
     create NAME
-    list
   version
 ```
 
@@ -259,13 +256,17 @@ Behavior:
 
 ```text
 dh db list [OWNER] [--limit N] [--visibility {public|private}]
+                   [--fork | --source]
 ```
 
 Blocked on a new cursor-paginated v2 `listDatabases` operation, proposed as
 `GET /api/v2/databases?owner=OWNER&page_token=...`. With no OWNER, use the
 authenticated user. OWNER may identify a user or organization. This is the
-counterpart to `gh repo list [OWNER]`; only filters supported by the eventual
-v2 contract should be exposed.
+counterpart to `gh repo list [OWNER]`. `--fork` lists databases owned by that
+owner which are forks, while `--source` lists non-forks; these flags are
+mutually exclusive and do not traverse ownership boundaries. They must not be
+implemented with `listForks`, which instead returns the immediate children of
+one database and remains accessible through `dh api`.
 
 ### `dh db view`
 
@@ -316,18 +317,6 @@ user or organization. Without it, use the authenticated username from
 no `--fork-name`. `--clone` and `--remote` are deferred until local Dolt
 integration is designed.
 
-### `dh db forks`
-
-```text
-dh db forks [DATABASE] [-R REPOSITORY]
-```
-
-Calls `listForks`. This is a DoltHub-specific addition because fork-network
-topology is a first-class database concept and v2 exposes it directly. It lists
-immediate children only; `Database.fork_network_count` is the transitive count.
-The endpoint returns the complete bounded list in one response, so this command
-does not expose `--limit`. Structured fields are `owner` and `name`.
-
 ### `dh db import`
 
 ```text
@@ -373,37 +362,30 @@ default branch, so no implicit `main` should be baked into the client.
 ### `dh branch`
 
 ```text
-dh branch list [-R REPOSITORY] [--limit N]
 dh branch create NAME (--from-branch NAME | --from-commit SHA)
 ```
 
 | Command | API operation | Request |
 | --- | --- | --- |
-| `branch list` | `listBranches` | `GET .../branches?page_token=...` |
 | `branch create` | `createBranch` | `POST .../branches` with `{ name, from: { branch } }` or `{ name, from: { commit } }` |
 
-`branch list` defaults to `--limit 30`, follows cursor pagination, and shows
-name, head commit SHA, and last update time. Structured fields are `name`,
-`head_commit_sha`, and `last_updated_at`. The create source flags are mutually
-exclusive and exactly mirror the API's discriminated union. There is no view,
-rename, or delete command because v2 has no corresponding operation.
+Branch listing remains available through `dh api`. The create source flags are
+mutually exclusive and exactly mirror the API's discriminated union. There is
+no view, rename, or delete command because v2 has no corresponding operation.
 
 ### `dh tag`
 
 ```text
-dh tag list [-R REPOSITORY] [--limit N]
 dh tag create NAME (--from-branch NAME | --from-commit SHA) [--message TEXT]
 ```
 
 | Command | API operation | Request |
 | --- | --- | --- |
-| `tag list` | `listTags` | `GET .../tags?page_token=...` |
 | `tag create` | `createTag` | `POST .../tags` with `{ name, from, message? }` |
 
 Omitting `--message` creates a lightweight tag; supplying it creates an
-annotated tag. `tag list` defaults to `--limit 30`; its structured fields are
-`name`, `commit_sha`, `message`, and `tagged_at`. There is no view or delete
-command in v2.
+annotated tag. Tag listing remains available through `dh api`. There is no view
+or delete command in v2.
 
 ### `dh sql`
 

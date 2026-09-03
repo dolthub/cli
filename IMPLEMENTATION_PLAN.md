@@ -217,34 +217,29 @@ and the full stack passes the cross-platform test and lint workflows.
 
 ## Phase 2: list commands
 
-Status: next. Start a new six-PR stack from `main`:
+Status: next. Start a new four-PR stack from `main`:
 
 ```text
 main
-  branch/list
-    tag/list
-      db/forks
-        release/list
-          pr/list
-            operation/list
+  api
+    release/list
+      pr/list
+        operation/list
 ```
 
-Five commands exercise the same cursor and output contract with different
-resource shapes. `db forks` belongs here because it is also a list command,
-but v2 returns its complete, bounded result in one response and exposes no
-pagination token.
+`dh api` provides the same low-level escape hatch as `gh api`, including access
+to branch, tag, and immediate-fork list endpoints. Typed list commands are
+limited to commands with direct `gh` equivalents.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 2.1 | `branch/list` | `dh branch list` | `listBranches` | First cursor-paginated command; creates the `branch` group. |
-| 2.2 | `tag/list` | `dh tag list` | `listTags` | Same paging shape with tag-specific fields; creates the `tag` group. |
-| 2.3 | `db/forks` | `dh db forks` | `listForks` | Non-paginated today; immediate children only. |
-| 2.4 | `release/list` | `dh release list` | `listReleases` | Creates the `release` group and establishes release JSON fields. |
-| 2.5 | `pr/list` | `dh pr list` | `listPulls` | Creates the `pr` group; `--state` filtering is client-side because v2 has no filter parameter. |
-| 2.6 | `operation/list` | `dh operation list` | `listOperations` | Auth-optional repository-scoped operation history. |
+| 2.1 | `api` | `dh api ENDPOINT` | Generic v2 access | Direct counterpart to `gh api`; exposes endpoints without inventing typed commands. |
+| 2.2 | `release/list` | `dh release list` | `listReleases` | Direct counterpart to `gh release list`. |
+| 2.3 | `pr/list` | `dh pr list` | `listPulls` | Direct counterpart to `gh pr list`; state filtering is client-side. |
+| 2.4 | `operation/list` | `dh operation list` | `listOperations` | Dolt operation counterpart to `gh run list`. |
 
-All six commands are repository-scoped and accept `-R/--repo`. Paginated
-commands accept `--limit N`, defaulting to 30, and reject values below 1 as a
+The three typed commands are repository-scoped and accept `-R/--repo`.
+Paginated commands accept `--limit N`, defaulting to 30, and reject values below 1 as a
 usage error. They preserve backend order, pass `meta.next_page_token` back as
 an opaque `page_token`, stop without another request once the limit is met,
 and fail if a token repeats. An empty successful list exits zero and prints no
@@ -257,39 +252,20 @@ and `-` when absent. Structured output operates on the final collected list,
 supports `--json`, `--jq`, and `--template`, and uses the API's snake_case
 field names.
 
-### Phase 2.1: `branch list`
+### Phase 2.1: `api`
 
-- Create and register the `branch` parent group.
-- Call `listBranches` for the resolved repository and paginate to `--limit`.
-- Human columns are `NAME`, `HEAD`, and `UPDATED`.
-- Structured fields are `name`, `head_commit_sha`, and `last_updated_at`.
-- Test repository resolution, custom hosts, anonymous and authenticated reads,
-  escaped path segments, opaque multi-page cursors, truncation at the limit,
-  empty results, RFC 9457 failures, both table modes, and every structured
-  field.
+- Implement the `dh api` contract in `COMMANDS.md`, including methods, typed
+  fields, request bodies, response headers, silent mode, jq/templates, and v2
+  envelope pagination.
+- Relative endpoints resolve beneath `/api/v2/`; absolute URLs and paths that
+  escape that prefix are rejected before credentials can be attached.
+- Branches, tags, and immediate forks remain available through this command,
+  for example `dh api databases/OWNER/DATABASE/branches --paginate`.
+- Test method inference, field encoding, stdin/file bodies, same-origin safety,
+  anonymous and authenticated requests, headers, pagination, slurp, filters,
+  errors, and cancellation.
 
-### Phase 2.2: `tag list`
-
-- Create and register the `tag` parent group.
-- Call `listTags` and use the same paging and repository contract as branches.
-- Human columns are `NAME`, `COMMIT`, `MESSAGE`, and `TAGGED`; absent messages
-  and times render as `-`.
-- Structured fields are `name`, `commit_sha`, `message`, and `tagged_at`.
-- Reuse paging behavior rather than copying a command-local cursor loop. Test
-  annotated and lightweight tags in addition to the common list cases.
-
-### Phase 2.3: `db forks`
-
-- Accept at most one positional `[HOST/]OWNER/DATABASE`; treat `-R/--repo` as
-  an alternative and reject using both.
-- Call `listForks` exactly once. It returns immediate children as
-  `DatabaseRef` values and is not paginated; do not expose `--limit`.
-- Human columns are `OWNER` and `NAME`. Structured fields are `owner` and
-  `name`.
-- Test argument precedence, one-request behavior, empty results, anonymous and
-  authenticated reads, table modes, structured output, and API errors.
-
-### Phase 2.4: `release list`
+### Phase 2.2: `release list`
 
 - Create and register the `release` parent group.
 - Call `listReleases` and paginate to `--limit`.
@@ -301,7 +277,7 @@ field names.
 - Test multiline descriptions, pagination, limit boundaries, empty results,
   table modes, structured output, and API errors.
 
-### Phase 2.5: `pr list`
+### Phase 2.3: `pr list`
 
 - Create and register the `pr` parent group.
 - Accept `--state open|closed|merged|all`, defaulting to `open`. Reject any
@@ -317,7 +293,7 @@ field names.
   items, filtered limit boundaries, repeated tokens, empty results, table
   modes, structured output, and API errors.
 
-### Phase 2.6: `operation list`
+### Phase 2.4: `operation list`
 
 - Extend the existing `operation` parent group; unlike `operation view`, this
   command is repository-scoped and authentication is optional.
@@ -331,9 +307,9 @@ field names.
   result and error JSON, pagination, anonymous and authenticated reads, table
   modes, structured output, and API errors.
 
-Phase 2 exit criterion: all six commands are registered on their own branches;
-the five cursor-paginated endpoints satisfy the shared paging contract;
-`db forks` remains a single request; public and private reads behave correctly;
+Phase 2 exit criterion: all four commands are registered on their own branches;
+generic API access covers untyped list endpoints; the three typed lists satisfy
+the shared paging contract; public and private reads behave correctly;
 and the full stack passes cross-platform tests, `go vet`, and lint.
 
 ## Phase 3: composed reads
