@@ -50,6 +50,7 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 		Credentials: credentials.NewFallbackStore(credentials.NewSystemStore(), fileStore),
 		Prompter:    systemPrompter,
 		LookupEnv:   os.LookupEnv,
+		Browser:     browser.NewSystem(),
 	}
 	f.Config = func() (config.Config, error) {
 		once.Do(func() {
@@ -122,20 +123,40 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 		}
 		return &http.Client{Transport: transport}, nil
 	}
+	f.APIClientForHost = func(host string) (*dolthub.Client, error) {
+		cfg, err := f.Config()
+		if err != nil {
+			return nil, err
+		}
+		transport := httptransport.New(http.DefaultTransport, appVersion)
+		if envToken, ok := f.LookupEnv("DH_TOKEN"); ok && envToken != "" {
+			transport, err = httptransport.NewAuthenticated(http.DefaultTransport, appVersion, host, envToken)
+		} else if user, ok := cfg.ActiveUser(host); ok {
+			source := &credentials.TokenSource{Store: f.Credentials, Host: host, User: user, Refresh: func(ctx context.Context, refreshToken string) (credentials.OAuthToken, error) {
+				client, err := oauthClient(appVersion, host, f.LookupEnv)
+				if err != nil {
+					return credentials.OAuthToken{}, err
+				}
+				return client.Refresh(ctx, refreshToken)
+			}}
+			transport, err = httptransport.NewAuthenticatedTokenSource(http.DefaultTransport, appVersion, host, source)
+		}
+		if err != nil {
+			return nil, err
+		}
+		client := &http.Client{Transport: transport}
+		base, err := apiBaseURL(host)
+		if err != nil {
+			return nil, err
+		}
+		return dolthub.NewClient(client, base)
+	}
 	f.APIClient = func() (*dolthub.Client, error) {
 		cfg, err := f.Config()
 		if err != nil {
 			return nil, err
 		}
-		client, err := f.HTTPClient()
-		if err != nil {
-			return nil, err
-		}
-		base, err := apiBaseURL(cfg.Host())
-		if err != nil {
-			return nil, err
-		}
-		return dolthub.NewClient(client, base)
+		return f.APIClientForHost(cfg.Host())
 	}
 	f.ResolveRepository = func(ctx context.Context, explicit string) (repository.Repository, error) {
 		cfg, err := f.Config()

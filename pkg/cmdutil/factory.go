@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/dolthub/cli/internal/authflow"
+	"github.com/dolthub/cli/internal/browser"
 	"github.com/dolthub/cli/internal/config"
 	"github.com/dolthub/cli/internal/credentials"
 	"github.com/dolthub/cli/internal/dolthub"
@@ -29,4 +30,6 @@ type Factory struct {
 	LookupEnv         func(string) (string, bool)
 	HTTPClient        func() (*http.Client, error)
 	APIClient         func() (*dolthub.Client, error)
+	APIClientForHost  func(string) (*dolthub.Client, error)
+	Browser           browser.Browser
 }
