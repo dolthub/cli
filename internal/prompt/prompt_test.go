@@ -33,3 +33,15 @@ func TestSystemConfirm(t *testing.T) {
 		})
 	}
 }
+
+func TestSystemSelect(t *testing.T) {
+	streams, in, _, errOut := iostreams.NewTest()
+	in.WriteString("2\n")
+	selected, err := (System{IO: streams}).Select("Pick one", []string{"first", "second"})
+	if err != nil || selected != 1 {
+		t.Fatalf("Select() = %d, %v", selected, err)
+	}
+	if got := errOut.String(); !strings.Contains(got, "1. first") || !strings.Contains(got, "2. second") {
+		t.Fatalf("prompt = %q", got)
+	}
+}

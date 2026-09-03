@@ -31,6 +31,9 @@ func TestNew(t *testing.T) {
 	if f.Authenticator == nil || f.RefreshToken == nil {
 		t.Fatal("production authentication dependencies are not configured")
 	}
+	if f.ResolveRepository == nil {
+		t.Fatal("repository resolver is not configured")
+	}
 }
 
 func TestAPIBaseURL(t *testing.T) {

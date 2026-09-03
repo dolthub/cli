@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/cli/internal/httptransport"
 	"github.com/dolthub/cli/internal/oauth"
 	"github.com/dolthub/cli/internal/prompt"
+	"github.com/dolthub/cli/internal/repository"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
 )
@@ -42,11 +43,12 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 	if credentialPathErr != nil {
 		fileStore = credentials.NewUnavailableFileStore(credentialPathErr)
 	}
+	systemPrompter := prompt.System{IO: io}
 	f := &cmdutil.Factory{
 		AppVersion:  appVersion,
 		IO:          io,
 		Credentials: credentials.NewFallbackStore(credentials.NewSystemStore(), fileStore),
-		Prompter:    prompt.System{IO: io},
+		Prompter:    systemPrompter,
 		LookupEnv:   os.LookupEnv,
 	}
 	f.Config = func() (config.Config, error) {
@@ -134,6 +136,28 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 			return nil, err
 		}
 		return dolthub.NewClient(client, base)
+	}
+	f.ResolveRepository = func(ctx context.Context, explicit string) (repository.Repository, error) {
+		cfg, err := f.Config()
+		if err != nil {
+			return repository.Repository{}, err
+		}
+		resolver := repository.Resolver{
+			Host:      cfg.Host,
+			LookupEnv: f.LookupEnv,
+			Configured: func() (repository.Repository, bool) {
+				if f.LookupEnv != nil {
+					if value, ok := f.LookupEnv("DH_REPO"); ok && strings.TrimSpace(value) != "" {
+						return repository.Repository{}, false
+					}
+				}
+				return cfg.DefaultRepository()
+			},
+			Remotes:   repository.ReadDoltRemotes,
+			CanPrompt: io.IsStdinTTY,
+			Select:    systemPrompter.Select,
+		}
+		return resolver.Resolve(ctx, explicit)
 	}
 	return f
 }
