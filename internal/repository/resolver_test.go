@@ -83,7 +83,7 @@ func TestResolverErrors(t *testing.T) {
 		t.Fatalf("remote error = %v", err)
 	}
 	resolver.Remotes = nil
-	if _, err := resolver.Resolve(context.Background(), ""); err == nil || !strings.Contains(err.Error(), "--repo") {
+	if _, err := resolver.Resolve(context.Background(), ""); err == nil || !strings.Contains(err.Error(), "--db") {
 		t.Fatalf("missing error = %v", err)
 	}
 }

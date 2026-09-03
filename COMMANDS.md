@@ -28,8 +28,8 @@ legacy APIs.
    DoltHub resource and avoids confusing remote DoltHub operations with local
    Dolt repository operations. Help text may say "database repository" where
    ambiguity matters.
-5. Resolve a database in this order: explicit `--repo HOST/OWNER/REPO` or
-   `--repo OWNER/REPO`, `DH_REPO`, a recognized Dolt remote in the current Dolt
+5. Resolve a database in this order: explicit `--db HOST/OWNER/DB` or
+   `--db OWNER/DB`, `DH_REPO`, a recognized Dolt remote in the current Dolt
    repository, then an interactive prompt when appropriate. Scripts fail with
    an actionable error instead of prompting.
 6. Public read endpoints work without login. Private reads and all mutations
@@ -104,10 +104,10 @@ dh
 
 ### Common flags
 
-Repository-scoped commands accept:
+Database-scoped commands accept:
 
 ```text
--R, --repo [HOST/]OWNER/REPO
+-R, --db [HOST/]OWNER/DB
 ```
 
 List and resource commands accept, where applicable:
@@ -120,8 +120,9 @@ List and resource commands accept, where applicable:
 -w, --web
 ```
 
-`--hostname` remains an authentication/configuration flag. `--repo` carries a
-host when a one-off command targets a non-default host.
+`--hostname` remains an authentication/configuration flag. `--db` carries a
+host when a one-off command targets a non-default host. `--repo` is accepted as
+a hidden compatibility alias.
 
 ### Async operations
 
@@ -454,7 +455,7 @@ CreatePullRequest { title, description?, from_branch, to_branch }
 ```
 
 `--head` may identify a branch in a fork. `--base` is always in the target
-repository selected by `--repo`; v2 requires `to_branch.database` to match the
+database selected by `--db`; v2 requires `to_branch.database` to match the
 URL repository. Interactive mode prompts for omitted fields. There are no
 reviewer, assignee, label, project, draft, or maintainer-edit flags.
 

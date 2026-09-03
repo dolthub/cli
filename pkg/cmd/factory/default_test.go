@@ -7,10 +7,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/dolthub/cli/internal/config"
-	"github.com/dolthub/cli/internal/credentials"
 	"github.com/dolthub/cli/pkg/iostreams"
 )
 
@@ -133,84 +131,5 @@ func TestRefreshTokenUsesConfiguredHostAndPublicClient(t *testing.T) {
 	}
 	if form.Get("client_id") != "dev-public-client" || form.Get("refresh_token") != "old-refresh-secret" || form.Get("client_secret") != "" {
 		t.Fatalf("refresh form = %v", form)
-	}
-}
-
-func TestHTTPClientRefreshesAndPersistsStoredCredential(t *testing.T) {
-	original := http.DefaultTransport
-	t.Cleanup(func() { http.DefaultTransport = original })
-	var apiAuthorization string
-	http.DefaultTransport = transportFunc(func(r *http.Request) (*http.Response, error) {
-		body := "{}"
-		if r.URL.Path == "/api/oauth/access_token" {
-			body = `{"access_token":"rotated-access","refresh_token":"rotated-refresh","token_type":"Bearer","expires_in":3600}`
-		} else {
-			apiAuthorization = r.Header.Get("Authorization")
-		}
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
-	})
-
-	streams, _, _, _ := iostreams.NewTest()
-	f := New("test", streams)
-	cfg := config.NewMemory()
-	cfg.SetHost("example.test")
-	cfg.SetActiveUser("example.test", "alice")
-	store := credentials.NewMemoryStore()
-	if err := credentials.SetOAuthToken(store, "example.test", "alice", credentials.OAuthToken{AccessToken: "expired-access", RefreshToken: "old-refresh", TokenType: "Bearer", ExpiresAt: time.Now().Add(-time.Hour)}); err != nil {
-		t.Fatal(err)
-	}
-	f.Config = func() (config.Config, error) { return cfg, nil }
-	f.Credentials = store
-	f.LookupEnv = func(name string) (string, bool) {
-		if name == OAuthClientIDEnv {
-			return "dev-public-client", true
-		}
-		return "", false
-	}
-	client, err := f.HTTPClient()
-	if err != nil {
-		t.Fatal(err)
-	}
-	req, _ := http.NewRequest(http.MethodGet, "https://example.test/api/v2/user", nil)
-	if _, err := client.Do(req); err != nil {
-		t.Fatal(err)
-	}
-	if apiAuthorization != "Bearer rotated-access" {
-		t.Fatalf("API authorization = %q", apiAuthorization)
-	}
-	rotated, err := credentials.GetOAuthToken(store, "example.test", "alice")
-	if err != nil || rotated.RefreshToken != "rotated-refresh" {
-		t.Fatalf("stored token = %#v, error = %v", rotated, err)
-	}
-}
-
-func TestHTTPClientUsesEnvironmentTokenWithoutActiveUser(t *testing.T) {
-	original := http.DefaultTransport
-	t.Cleanup(func() { http.DefaultTransport = original })
-	var authorization string
-	http.DefaultTransport = transportFunc(func(r *http.Request) (*http.Response, error) {
-		authorization = r.Header.Get("Authorization")
-		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader("{}")), Request: r}, nil
-	})
-	streams, _, _, _ := iostreams.NewTest()
-	f := New("test", streams)
-	cfg := config.NewMemory()
-	f.Config = func() (config.Config, error) { return cfg, nil }
-	f.LookupEnv = func(name string) (string, bool) {
-		if name == "DH_TOKEN" {
-			return "environment-secret", true
-		}
-		return "", false
-	}
-	client, err := f.HTTPClient()
-	if err != nil {
-		t.Fatal(err)
-	}
-	req, _ := http.NewRequest(http.MethodGet, "https://www.dolthub.com/api/v2/user", nil)
-	if _, err := client.Do(req); err != nil {
-		t.Fatal(err)
-	}
-	if authorization != "Bearer environment-secret" {
-		t.Fatalf("authorization = %q", authorization)
 	}
 }

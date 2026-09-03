@@ -62,7 +62,7 @@ func NewCmdBrowse(f *cmdutil.Factory, runF func(context.Context, *Options) error
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error { return runF(cmd.Context(), opts) },
 	}
-	cmd.Flags().StringVarP(&opts.Repository, "repo", "R", "", "Select a database repository using [HOST/]OWNER/REPO")
+	cmdutil.AddDatabaseFlag(cmd, &opts.Repository)
 	cmd.Flags().IntVar(&opts.Pull, "pull", 0, "Open a pull request by number")
 	cmd.Flags().StringVar(&opts.Branch, "branch", "", "Open a branch")
 	return cmd

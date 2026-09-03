@@ -50,7 +50,7 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 			}
 			if len(args) == 1 {
 				if opts.Repository != "" {
-					return cmdutil.FlagErrorf("cannot use a database argument with --repo")
+					return cmdutil.FlagErrorf("cannot use a database argument with --db")
 				}
 				opts.Repository = args[0]
 			}
@@ -65,7 +65,7 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 		}
 		return nil
 	}
-	cmd.Flags().StringVarP(&opts.Repository, "repo", "R", "", "Select a database repository using [HOST/]OWNER/REPO")
+	cmdutil.AddDatabaseFlag(cmd, &opts.Repository)
 	cmd.Flags().BoolVar(&opts.Forks, "forks", false, "Include immediate forks")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open the database in a browser")
 	cmdutil.AddJSONFlags(cmd, &opts.Exporter, append(jsonFields, "forks"))
