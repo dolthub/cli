@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: proposed
+Status: active — Phase 0 merged; Phase 1 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -71,6 +71,16 @@ A command is complete when:
 
 ## Phase 0: foundations
 
+Status: complete. The five-PR stack was merged on 2026-09-03:
+
+| Order | Branch | Pull request |
+| ---: | --- | --- |
+| 0.1 | `core/api-client` | [#14](https://github.com/dolthub/cli/pull/14) |
+| 0.2 | `core/api-models` | [#15](https://github.com/dolthub/cli/pull/15) |
+| 0.3 | `core/database-resolver` | [#16](https://github.com/dolthub/cli/pull/16) |
+| 0.4 | `core/output` | [#17](https://github.com/dolthub/cli/pull/17) |
+| 0.5 | `core/pagination` | [#18](https://github.com/dolthub/cli/pull/18) |
+
 These are internal capability PRs, not command PRs. They are ordered so each
 one is independently testable and leaves the existing command surface working.
 
@@ -85,21 +95,115 @@ one is independently testable and leaves the existing command surface working.
 Phase 0 exit criterion: a command can resolve a database, call any synchronous
 v2 JSON operation, paginate a list, and render human or structured output.
 
-## Phase 1: local and single-request read commands
+## Phase 1: local and bounded read commands
 
-These have no mutation semantics and require either no HTTP request or one
-simple GET. They establish command conventions at low risk.
+Status: next. These have no mutation semantics and require no pagination.
+Most make no HTTP request or one simple GET; `db view --forks` makes one
+additional bounded request. They establish command conventions at low risk.
+
+Build Phase 1 as one stack, with one command per branch:
+
+```text
+main
+  completion
+    config/list
+      db/view
+        browse
+          operation/view
+```
 
 | Order | Branch / PR | Command | API operations | Why here |
 | ---: | --- | --- | --- | --- |
 | 1.1 | `completion` | `dh completion` | None | Cobra generates completions locally; smallest new command. |
 | 1.2 | `config/list` | `dh config list` | None | Exercises stable non-secret tabular output without API behavior. |
-| 1.3 | `db/view` | `dh db view [DB]` | `getDatabase` | Simplest database-scoped typed read and first use of resolver/output foundations. |
+| 1.3 | `db/view` | `dh db view [DB]` | `getDatabase`, optionally `listForks` | First database-scoped typed read and first use of resolver/output foundations. |
 | 1.4 | `browse` | `dh browse` | None | Reuses database resolution and existing browser abstraction; URL-only behavior. |
 | 1.5 | `operation/view` | `dh operation view ID` | `getOperation` | One authenticated GET and important validation for opaque/slash-containing operation IDs. |
 
 `db/view` creates and registers the `db` parent group. `operation/view` creates
 and registers the `operation` parent group.
+
+### Phase 1.1: `completion`
+
+- Accept exactly one positional shell: `bash`, `fish`, `powershell`, or `zsh`.
+- Generate completion from the fully registered root command and write only the
+  script to stdout. Do not load config, credentials, or an HTTP client.
+- Reject a missing or unsupported shell as a usage error.
+- Test every shell, argument validation, registration in root help, and that
+  generated output is non-empty.
+
+### Phase 1.2: `config list`
+
+- Print every supported non-secret key: initially `host` and `repo`.
+- Show columns `KEY`, `VALUE`, and `SOURCE`. Source is one of `environment`,
+  `config`, `default`, or `unset`; an unset repo has an empty value.
+- Environment values take precedence over persisted values. Invalid `DH_REPO`
+  is an error rather than silently falling through to persisted config.
+- Use headers and aligned columns on a terminal; use stable tab-separated rows
+  without headers otherwise. This command does not support structured output
+  because it exists to inspect configuration provenance rather than a v2
+  resource.
+- Test all four source labels, environment precedence, invalid environment
+  input, TTY output, non-TTY output, and secret redaction by construction.
+
+### Phase 1.3: `db view`
+
+- Accept at most one positional `[HOST/]OWNER/DATABASE` and `-R/--repo` as an
+  alternative. Reject using both. With neither, use the shared resolver.
+- `--web` opens the database root URL and makes no API request. It is mutually
+  exclusive with `--forks`, `--json`, `--jq`, and `--template`.
+- Normal mode calls `getDatabase`. `--forks` additionally calls `listForks`
+  and includes immediate children only.
+- Human output includes owner/name, visibility, description, size, stars,
+  last-write time, parent, network root, and fork-network count. An absent
+  optional value is rendered as `-` rather than inferred.
+- Structured fields use the API v2 snake_case names: `owner`, `name`,
+  `description`, `visibility`, `fork_network_count`, `star_count`,
+  `size_bytes`, `last_write_at`, `parent`, and `network_root`; `forks` is
+  available only with `--forks`.
+- Public databases must work anonymously. Test escaped owner/database path
+  segments, private authenticated reads, RFC 9457 errors, TTY and non-TTY
+  rendering, every structured field, `--forks`, and incompatible flags.
+
+### Phase 1.4: `browse`
+
+- Accept no positional argument or one positive pull-request number. Also
+  accept `--pull NUMBER` and `--branch NAME`; these target selectors are
+  mutually exclusive.
+- Resolve the database exactly as other database-scoped commands do, including
+  `-R/--repo`. Make no API request.
+- Construct only these URL shapes, escaping every dynamic path segment:
+  - database: `/repositories/{owner}/{database}`
+  - pull request: `/repositories/{owner}/{database}/pulls/{number}`
+  - branch data: `/repositories/{owner}/{database}/data/{branch}`
+- Do not accept an arbitrary path or guess whether a string is a branch, tag,
+  commit, table, or document. Add explicit selectors later when their URL
+  semantics are specified.
+- Test every URL shape, custom hosts through resolver injection, escaping,
+  selector conflicts, invalid pull numbers, browser failures, and the absence
+  of API calls.
+
+### Phase 1.5: `operation view`
+
+- Accept exactly one opaque operation ID and call authenticated
+  `getOperation`. Select the API origin from effective host configuration; this
+  command is not database-scoped.
+- Escape the ID as one path segment even when it contains slashes. Do not split
+  it, parse it, or construct a database from its contents.
+- Human output includes ID, type, status, created time, cancelable state, and
+  any error or result. Structured fields are `id`, `type`, `status`,
+  `created_at`, `cancelable`, `error`, and `result`.
+- Viewing an operation whose status is `failed` succeeds after displaying its
+  recorded error. `operation watch`, implemented later, is responsible for a
+  nonzero exit when a watched operation terminates unsuccessfully.
+- Test authentication requirements, slash-containing IDs, each operation
+  status, failed-operation rendering, dynamic result JSON, RFC 9457 errors,
+  TTY and non-TTY rendering, and every structured field.
+
+Phase 1 exit criterion: all five commands are registered only on their own
+branches, public database reads work without login, authenticated reads work
+with stored or environment credentials, browser commands make no API calls,
+and the full stack passes the cross-platform test and lint workflows.
 
 ## Phase 2: paginated read commands
 

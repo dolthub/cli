@@ -60,7 +60,7 @@ dh
   branch
     create NAME
     list
-  browse [NUMBER | PATH | REF]
+  browse [NUMBER]
   completion {bash|fish|powershell|zsh}
   config
     get KEY
@@ -199,19 +199,36 @@ command must not print stored secrets by default.
 Initial keys are `host` and `repo`. Environment overrides remain `DH_HOST` and
 `DH_REPO`.
 
+`config list` prints `KEY`, `VALUE`, and `SOURCE`, where source is
+`environment`, `config`, `default`, or `unset`. Terminal output has headers and
+aligned columns; piped output is stable tab-separated data without headers. An
+invalid `DH_REPO` is an error and does not fall back to the persisted value.
+
+### `dh completion`
+
+```text
+dh completion {bash|fish|powershell|zsh}
+```
+
+Generate a completion script from the registered Cobra command tree and write
+it to stdout. Completion generation is entirely local and must not load
+configuration, credentials, or an HTTP client.
+
 ### `dh browse`
 
 ```text
-dh browse [NUMBER | PATH | REF] [-R REPOSITORY]
-dh browse --repo
-dh browse --pull NUMBER
-dh browse --branch NAME
+dh browse [NUMBER] [-R REPOSITORY]
+dh browse --pull NUMBER [-R REPOSITORY]
+dh browse --branch NAME [-R REPOSITORY]
 ```
 
 No API call is required. Build a URL from the resolved host and repository and
-open it with the system browser. A numeric positional argument is a pull
-request number. Exact DoltHub URL shapes must be covered by tests rather than
-spread through commands.
+open it with the system browser. With no selector, open
+`/repositories/{owner}/{database}`. A numeric positional argument or `--pull`
+opens `/repositories/{owner}/{database}/pulls/{number}`; `--branch` opens
+`/repositories/{owner}/{database}/data/{branch}`. Selectors are mutually
+exclusive, and every dynamic path segment is escaped. Arbitrary paths and
+ambiguous ref guessing are intentionally unsupported.
 
 ### `dh db create`
 
@@ -271,6 +288,9 @@ it cannot show a README, license, topics, or default branch because those are
 not present in the v2 `Database` resource.
 
 `--forks` adds immediate child forks. `listForks` is not paginated today.
+`--web` makes no API request and is incompatible with `--forks` and structured
+output. Structured fields use API v2 snake_case names; `forks` is exposed only
+when requested.
 
 ### `dh db fork`
 
@@ -556,6 +576,12 @@ dh operation watch ID [--interval DURATION]
 
 `operation list` includes Dolt CI jobs even though v2 currently has no command
 to create or configure them.
+
+`operation view` requires authentication and treats the ID as one opaque path
+segment, including when it contains slashes. Its structured fields are `id`,
+`type`, `status`, `created_at`, `cancelable`, `error`, and `result`. Viewing an
+already-failed operation displays its recorded error but exits successfully;
+`operation watch` owns terminal-operation failure semantics.
 
 ### `dh org list`
 
