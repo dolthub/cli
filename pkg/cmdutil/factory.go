@@ -2,7 +2,6 @@ package cmdutil
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/dolthub/cli/internal/authflow"
 	"github.com/dolthub/cli/internal/browser"
@@ -28,8 +27,6 @@ type Factory struct {
 	Prompter          prompt.Prompter
 	ResolveRepository func(context.Context, string) (repository.Repository, error)
 	LookupEnv         func(string) (string, bool)
-	HTTPClient        func() (*http.Client, error)
-	APIClient         func() (*dolthub.Client, error)
 	APIClientForHost  func(string) (*dolthub.Client, error)
 	Browser           browser.Browser
 }

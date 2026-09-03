@@ -3,7 +3,6 @@ package factory
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -89,40 +88,6 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 		panic(fmt.Sprintf("construct browser authenticator: %v", err))
 	}
 	f.Authenticator = authenticator
-	f.HTTPClient = func() (*http.Client, error) {
-		cfg, err := f.Config()
-		if err != nil {
-			return nil, err
-		}
-		host := cfg.Host()
-		transport := httptransport.New(http.DefaultTransport, appVersion)
-		if envToken, ok := f.LookupEnv("DH_TOKEN"); ok && envToken != "" {
-			transport, err = httptransport.NewAuthenticated(http.DefaultTransport, appVersion, host, envToken)
-			if err != nil {
-				return nil, err
-			}
-		} else if user, ok := cfg.ActiveUser(host); ok {
-			_, tokenErr := credentials.GetOAuthToken(f.Credentials, host, user)
-			if tokenErr != nil && !errors.Is(tokenErr, credentials.ErrNotFound) {
-				return nil, fmt.Errorf("load credential: %w", tokenErr)
-			}
-			if tokenErr == nil {
-				refresh := func(ctx context.Context, refreshToken string) (credentials.OAuthToken, error) {
-					client, err := oauthClient(appVersion, host, f.LookupEnv)
-					if err != nil {
-						return credentials.OAuthToken{}, err
-					}
-					return client.Refresh(ctx, refreshToken)
-				}
-				source := &credentials.TokenSource{Store: f.Credentials, Host: host, User: user, Refresh: refresh}
-				transport, err = httptransport.NewAuthenticatedTokenSource(http.DefaultTransport, appVersion, host, source)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-		return &http.Client{Transport: transport}, nil
-	}
 	f.APIClientForHost = func(host string) (*dolthub.Client, error) {
 		cfg, err := f.Config()
 		if err != nil {
@@ -150,13 +115,6 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 			return nil, err
 		}
 		return dolthub.NewClient(client, base)
-	}
-	f.APIClient = func() (*dolthub.Client, error) {
-		cfg, err := f.Config()
-		if err != nil {
-			return nil, err
-		}
-		return f.APIClientForHost(cfg.Host())
 	}
 	f.ResolveRepository = func(ctx context.Context, explicit string) (repository.Repository, error) {
 		cfg, err := f.Config()
