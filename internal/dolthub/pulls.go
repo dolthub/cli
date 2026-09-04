@@ -37,3 +37,10 @@ func (c *Client) CreatePullComment(ctx context.Context, owner, database string, 
 	_, err := c.request(ctx, http.MethodPost, path("databases", owner, database, "pulls", strconv.FormatInt(number, 10), "comments"), nil, request, &out)
 	return out, err
 }
+
+// CreatePull creates a pull request.
+func (c *Client) CreatePull(ctx context.Context, owner, database string, request CreatePullRequest) (Pull, error) {
+	var out Pull
+	_, err := c.request(ctx, http.MethodPost, path("databases", owner, database, "pulls"), nil, request, &out)
+	return out, err
+}
