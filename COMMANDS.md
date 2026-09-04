@@ -1,6 +1,6 @@
 # `dh` command and API plan
 
-Status: active — Phases 0–5 implemented; Phase 6 specified
+Status: active — Phases 0–6 implemented; Phase 7 specified
 
 This document defines the intended command surface for `dh`. It is based on:
 
@@ -97,11 +97,11 @@ dh
 ```
 
 `api`, `auth login`, `auth logout`, `auth status`, `branch create`, `browse`,
-`completion`, `config get`, `config list`, `config set`, `db create`, `db view`,
-`operation list`, `operation view`, `pr close`, `pr comment`, `pr create`,
-`pr edit`, `pr list`, `pr reopen`, `pr view`, `release create`, `release list`,
-`release view`, `tag create`, and `version` are implemented. The rest are
-planned.
+`completion`, `config get`, `config list`, `config set`, `db create`, `db fork`,
+`db view`, `operation list`, `operation view`, `operation watch`, `pr close`,
+`pr comment`, `pr create`, `pr edit`, `pr list`, `pr merge`, `pr reopen`,
+`pr view`, `release create`, `release list`, `release view`, `tag create`, and
+`version` are implemented. The rest are planned.
 
 ## Global conventions
 
@@ -397,10 +397,23 @@ or delete command in v2.
 ### `dh sql`
 
 ```text
-dh sql [QUERY] --ref REF [--limit N] [--timeout DURATION]
-dh sql --file FILE --ref REF [--limit N] [--timeout DURATION]
-dh sql --write [QUERY] --from-branch NAME --to-branch NAME [--no-wait]
+dh sql [QUERY] [-R DATABASE] --ref REF [--limit N] [--timeout DURATION]
+       [--json FIELDS] [--jq EXPRESSION | --template STRING]
+dh sql --file FILE [-R DATABASE] --ref REF [--limit N]
+       [--timeout DURATION] [--json FIELDS]
+       [--jq EXPRESSION | --template STRING]
+dh sql --write [QUERY] [-R DATABASE] --branch NAME [--from-branch NAME]
+       [--file FILE] [--no-wait] [--json FIELDS]
+       [--jq EXPRESSION | --template STRING]
 ```
+
+`-R/--db` follows the normal database-resolution rules and may be omitted when
+the repository can be inferred. Supply SQL with one positional `QUERY` or
+`--file FILE`; these explicit sources are mutually exclusive. With neither,
+stdin is read when it is not a terminal. `--file -` explicitly reads stdin. A
+query which is empty after trimming whitespace is rejected. Query bytes are
+otherwise preserved exactly; in particular, the CLI does not split statements
+or strip a trailing semicolon.
 
 Read mode calls `runSqlReadQueryPost`:
 
@@ -413,6 +426,14 @@ The CLI should prefer the body-encoded POST operation for all reads, avoiding
 URL-length limits while retaining identical public-read semantics. The GET
 `runSqlReadQuery` operation remains available through `dh api`.
 
+Read mode is the default and requires `--ref`. The ref may be a branch, tag, or
+commit understood by v2. `--limit` must be positive when supplied. `--timeout`
+is the server-side SQL execution timeout, not a client-side polling deadline;
+it must be positive, no greater than 60 seconds, and exactly representable as
+an integer number of milliseconds. Omitting these flags preserves the server
+defaults of 1,000 rows and 30 seconds. Read mode may be anonymous for public
+databases and uses credentials when available for private databases.
+
 Write mode calls `runSqlWriteQuery`, then `getOperation` unless `--no-wait`:
 
 ```text
@@ -421,13 +442,36 @@ SqlWriteRequest { from_branch, to_branch, q }
 ```
 
 `--write` must be explicit. The client must not guess whether arbitrary SQL is
-read-only. SQL may be supplied as one positional argument, by `--file`, or from
-stdin when stdin is not a terminal. These sources are mutually exclusive.
+read-only. Write mode requires authentication and `--branch`, which maps to the
+API's `to_branch` and is where SQL executes. `--from-branch` maps to the API's
+base branch used to create or update the target; it defaults to `--branch` for
+an in-place write. Both names are passed through as bare branches in the
+resolved database. Write mode rejects `--ref`, `--limit`, and `--timeout`; read
+mode rejects `--branch`, `--from-branch`, and `--no-wait`. By default it uses
+the shared operation waiter and status reporter, renders the final `Operation`,
+and returns failure when the operation fails. `--no-wait` renders the initial
+`OperationRef` instead.
 
-Read output is a table by default. `--json` exports the complete `QueryResult`,
-including column metadata, rows, status, message, and warnings. The server
-defaults are 1,000 rows and 30 seconds; its documented timeout cap is 60
-seconds.
+Successful read output is a table whose headers are `QueryResult.columns[].name`
+and whose cells retain server order. A JSON `null` cell renders as `NULL`; all
+other cells remain strings without client-side type coercion. Human rendering
+escapes embedded backslashes, tabs, carriage returns, and newlines so each row
+occupies one output line. TTY output uses an aligned table and non-TTY output is
+stable tab-separated text. Human-readable warnings go to stderr after the
+table. Structured output preserves the original unescaped strings and nulls.
+
+Read structured fields are `columns`, `rows`, `status`, `message`, and
+`warnings`, and preserve the complete typed `QueryResult`. Write structured
+fields are `id`, `href`, `type`, `status`, `created_at`, `cancelable`, `error`,
+and `result`, as applicable to the initial reference or final operation. Fields
+which do not belong to the selected mode are rejected. Structured output stays
+on stdout; wait progress and warnings stay on stderr.
+
+Every read status other than `success` (`error`, `timeout`, `row_limit`,
+`not_workspace`, or an unknown value) produces a nonzero exit. The command
+first renders any returned rows or structured result, then writes the server
+message to stderr. It also rejects malformed results whose row widths do not
+match the column count rather than truncating or panicking.
 
 ### `dh pr list`
 

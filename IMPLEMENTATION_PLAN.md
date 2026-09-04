@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: active — Phases 0–5 merged; Phase 6 is next
+Status: active — Phases 0–6 merged; Phase 7 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -364,19 +364,21 @@ review/revert.
 
 ## Phase 6: asynchronous operation framework and commands
 
-Status: next. Start a new four-PR stack from `main`.
+Status: complete. The four-PR stack was merged on 2026-09-04:
 
 Async behavior is a shared reliability boundary and gets a foundation PR
 before any async command.
 
 | Order | Branch / PR | Command or scope | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 6.1 | `core/operation-waiter` | Internal waiter | `getOperation` | Same-origin href validation, bounded exponential backoff with jitter, cancellation, terminal failure rendering, and deterministic fake-clock tests. |
-| 6.2 | `operation/watch` | `dh operation watch ID` | `getOperation` | Exposes the waiter directly with `--interval`; returns nonzero for failed operations. |
-| 6.3 | `db/fork` | `dh db fork [DB]` | `getCurrentUser`, `createFork`, `getOperation` | Wait by default; `--no-wait` exports the initial OperationRef. |
-| 6.4 | `pr/merge` | `dh pr merge NUMBER` | `mergePull`, `getOperation` | One server-defined merge mode; wait by default. |
+| 6.1 | [`core/operation-waiter` / #52](https://github.com/dolthub/cli/pull/52) | Internal waiter | `getOperation` | Same-origin href validation, bounded exponential backoff with jitter, cancellation, terminal failure rendering, and deterministic fake-clock tests. |
+| 6.2 | [`operation/watch` / #53](https://github.com/dolthub/cli/pull/53) | `dh operation watch ID` | `getOperation` | Exposes the waiter directly with `--interval`; returns nonzero for failed operations. |
+| 6.3 | [`db/fork` / #54](https://github.com/dolthub/cli/pull/54) | `dh db fork [DB]` | `getCurrentUser`, `createFork`, `getOperation` | Wait by default; `--no-wait` exports the initial OperationRef. |
+| 6.4 | [`pr/merge` / #55](https://github.com/dolthub/cli/pull/55) | `dh pr merge NUMBER` | `mergePull`, `getOperation` | One server-defined merge mode; wait by default. |
 
 ## Phase 7: SQL
+
+Status: next. Start a new one-PR phase from `main`.
 
 SQL is one leaf command with read and explicitly selected write modes, so both
 modes belong in the same `sql` branch and PR. Splitting modes across PRs would
@@ -387,9 +389,85 @@ ownership rule.
 | ---: | --- | --- | --- | --- |
 | 7.1 | `sql` | `dh sql` | `runSqlReadQueryPost`, `runSqlWriteQuery`, `getOperation` | Accept one of positional SQL, `--file`, or piped stdin. Reads render typed columns/rows and interpret query-level status. Writes require `--write`, branch inputs, auth, and async waiting. |
 
-This phase needs careful tests for dynamic JSON values, nulls, binary/temporal
-representations, terminal tables, warnings, row limits, timeouts, SQL-level
-HTTP-200 failures, large body-encoded queries, and async writes.
+### Phase 7.1: `sql`
+
+This is one branch and one PR. It includes the typed client methods because no
+separate foundation is needed for methods used by only this command. The PR
+must add and register the `sql` leaf only when both modes are complete.
+
+#### Command and input contract
+
+- Accept at most one positional query. Prefer an explicit positional argument
+  or `--file FILE`, which are mutually exclusive; with neither, fall back to
+  non-TTY stdin. `--file -` explicitly selects stdin. Reject no source, read
+  errors, and whitespace-only SQL. Preserve the selected bytes without
+  statement parsing or mutation.
+- Resolve `-R/--db` through the shared database resolver. Read mode remains
+  usable anonymously for a public database; write mode requires credentials.
+- Default to read mode. `--write` is an explicit safety boundary and must never
+  be inferred from SQL text.
+- Add `--json`, `--jq`, and `--template`. Validate the selected fields against
+  the mode-specific resource rather than accepting read fields for writes or
+  operation fields for reads.
+
+#### Read mode
+
+- Require `--ref REF`; reject the write-only flags `--branch`,
+  `--from-branch`, and `--no-wait`.
+- Add `Client.RunSQLRead` and call `runSqlReadQueryPost` with
+  `SQLReadRequest { ref, q, limit?, timeout_ms? }`. Always use POST, including
+  for short queries; leave the GET variant to `dh api`.
+- Treat omitted `--limit` and `--timeout` as absent JSON fields so server
+  defaults remain authoritative. Validate an explicit limit as positive.
+  Validate timeout as positive, at most 60 seconds, and exactly representable
+  in whole milliseconds before converting it to `timeout_ms`.
+- Render column names as table headers and rows in server order. Render null as
+  `NULL` and use no client-side SQL type coercion. Escape embedded backslashes,
+  tabs, carriage returns, and newlines in human output so row boundaries remain
+  stable; structured output preserves original strings and nulls. Reject
+  inconsistent row widths. Use aligned TTY tables and stable tab-separated
+  non-TTY output.
+- In human mode, write warnings and a non-success server message to stderr. In
+  structured mode, export `columns`, `rows`, `status`, `message`, and
+  `warnings` without changing their types. After rendering the response, return
+  failure for every status except `success`, including unknown statuses.
+
+#### Write mode
+
+- Require nonempty `--branch` as the write target (`to_branch`). Accept optional
+  `--from-branch` as the base and default it to `--branch` for in-place writes.
+  Reject read-only `--ref`, `--limit`, and `--timeout`.
+- Add `Client.RunSQLWrite` and call `runSqlWriteQuery` with
+  `SQLWriteRequest { from_branch, to_branch, q }`. Pass branch names through;
+  do not infer, create, or validate them locally beyond nonemptiness.
+- Reuse the Phase 6 waiter and terminal status reporter. Wait by default,
+  render the terminal operation, and propagate terminal failure. With
+  `--no-wait`, render the accepted `OperationRef` and do not poll.
+- Human and structured operation output must match `db fork` and `pr merge`.
+  Progress always goes to stderr so JSON, jq, templates, and piped output stay
+  clean.
+
+#### Required tests and exit criterion
+
+- Constructor and root-registration tests cover help, every flag, positional
+  argument count, database resolution, and mode-specific flag conflicts.
+- Input tests cover positional SQL, regular files, `--file -`, piped stdin,
+  TTY-without-input, conflicting sources, empty input, file errors, multiline
+  SQL, and preservation of large body-encoded queries.
+- Mocked HTTP tests assert escaped owner/database paths, POST methods, exact
+  request JSON, optional-field omission, anonymous public reads, authenticated
+  private reads, required write auth, v2 problem errors, and cancellation.
+- Read-result tests cover no rows, dynamic column counts, nulls, tabs/newlines,
+  binary and temporal strings, duplicate column labels, malformed row widths,
+  warnings, all documented statuses, an unknown status, limit boundaries, and
+  timeout conversion/boundaries.
+- Output tests cover TTY and non-TTY tables plus every read structured field.
+  Write tests cover the accepted reference, queued/running/succeeded progress,
+  failed operations, `--no-wait`, and every operation structured field.
+- Phase 7 is complete when the single PR passes the repository test, vet, lint,
+  and whitespace checks; read SQL works against a public database; write SQL
+  completes through the shared waiter; and root help advertises the complete
+  `sql` leaf.
 
 ## Phase 8: multipart import
 
@@ -460,5 +538,5 @@ db/list       (blocked on new v2 endpoint)
 org/list      (blocked on new v2 endpoint)
 ```
 
-Existing commands and commands completed in Phases 1–5 stay on `main` and are
+Existing commands and commands completed in Phases 1–6 stay on `main` and are
 not bundled into new command PRs.
