@@ -19,6 +19,13 @@ func (c *Client) CreateDatabase(ctx context.Context, request CreateDatabaseReque
 	return result, err
 }
 
+// CreateFork starts an asynchronous database fork operation.
+func (c *Client) CreateFork(ctx context.Context, owner, database string, request CreateForkRequest) (OperationRef, error) {
+	var result OperationRef
+	_, err := c.request(ctx, http.MethodPost, path("databases", owner, database, "forks"), nil, request, &result)
+	return result, err
+}
+
 // ListForks returns the immediate forks of a database repository.
 func (c *Client) ListForks(ctx context.Context, owner, database string) ([]DatabaseRef, error) {
 	var result []DatabaseRef
