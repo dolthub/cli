@@ -1,6 +1,6 @@
 # `dh` command and API plan
 
-Status: active — Phases 0–2 implemented; Phase 3 specified
+Status: active — Phases 0–3 implemented; Phase 4 specified
 
 This document defines the intended command surface for `dh`. It is based on:
 
@@ -98,8 +98,8 @@ dh
 
 `api`, `auth login`, `auth logout`, `auth status`, `browse`, `completion`,
 `config get`, `config list`, `config set`, `db view`, `operation list`,
-`operation view`, `pr list`, `release list`, and `version` are implemented. The
-rest are planned.
+`operation view`, `pr list`, `pr view`, `release list`, `release view`, and
+`version` are implemented. The rest are planned.
 
 ## Global conventions
 

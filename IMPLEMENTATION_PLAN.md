@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: active — Phases 0–2 merged; Phase 3 is next
+Status: active — Phases 0–3 merged; Phase 4 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -40,10 +40,12 @@ containing the whole roadmap. A typical phase is:
 
 ```text
 main
-  api
-    release/list
-      pr/list
-        operation/list
+  db/create
+    branch/create
+      tag/create
+        release/create
+          pr/comment
+            pr/create
 ```
 
 Each branch maps to one PR whose base is the branch below it. Submit stacks
@@ -314,7 +316,7 @@ and the full stack passes cross-platform tests, `go vet`, and lint.
 
 ## Phase 3: composed reads
 
-Status: next. Start a new two-PR stack from `main`.
+Status: complete. The two-PR stack was merged on 2026-09-04:
 
 ```text
 main
@@ -326,10 +328,12 @@ These remain read-only but need multiple requests or client-side lookup.
 
 | Order | Branch / PR | Command | API operations | Complexity |
 | ---: | --- | --- | --- | --- |
-| 3.1 | `release/view` | `dh release view TAG` | `listReleases` | Paginate until an exact tag match; stop early. Replace with `getRelease` if v2 adds it. |
-| 3.2 | `pr/view` | `dh pr view NUMBER` | `getPull`, optionally `listPullComments` | Compose metadata and top-level comments while clearly omitting unavailable diff/review data. |
+| 3.1 | [`release/view` / #38](https://github.com/dolthub/cli/pull/38) | `dh release view TAG` | `listReleases` | Paginate until an exact tag match; stop early. Replace with `getRelease` if v2 adds it. |
+| 3.2 | [`pr/view` / #39](https://github.com/dolthub/cli/pull/39) | `dh pr view NUMBER` | `getPull`, optionally `listPullComments` | Compose metadata and top-level comments while clearly omitting unavailable diff/review data. |
 
 ## Phase 4: synchronous create commands
+
+Status: next. Start a new six-PR stack from `main`.
 
 These introduce JSON request bodies and interactive/non-interactive input
 validation but return their final resource synchronously.
@@ -445,8 +449,6 @@ Excluding existing commands and internal foundation PRs, the proposed command
 PR order is:
 
 ```text
-release/view
-pr/view
 db/create
 branch/create
 tag/create
@@ -465,5 +467,5 @@ db/list       (blocked on new v2 endpoint)
 org/list      (blocked on new v2 endpoint)
 ```
 
-Existing commands and commands completed in Phases 1–2 stay on `main` and are
+Existing commands and commands completed in Phases 1–3 stay on `main` and are
 not bundled into new command PRs.
