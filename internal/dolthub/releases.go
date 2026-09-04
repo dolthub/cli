@@ -15,3 +15,10 @@ func (c *Client) ListReleases(ctx context.Context, owner, database, token string
 	m, e := c.request(ctx, http.MethodGet, path("databases", owner, database, "releases"), q, nil, &out)
 	return out, m.NextPageToken, e
 }
+
+// CreateRelease creates a database release.
+func (c *Client) CreateRelease(ctx context.Context, owner, database string, request CreateReleaseRequest) (Release, error) {
+	var out Release
+	_, err := c.request(ctx, http.MethodPost, path("databases", owner, database, "releases"), nil, request, &out)
+	return out, err
+}
