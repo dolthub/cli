@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: active — Phases 0 and 1 merged; Phase 2 is next
+Status: active — Phases 0–2 merged; Phase 3 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -40,10 +40,10 @@ containing the whole roadmap. A typical phase is:
 
 ```text
 main
-  core/database-resolver
-    db/view
-      branch/list
-        tag/list
+  api
+    release/list
+      pr/list
+        operation/list
 ```
 
 Each branch maps to one PR whose base is the branch below it. Submit stacks
@@ -217,7 +217,7 @@ and the full stack passes the cross-platform test and lint workflows.
 
 ## Phase 2: list commands
 
-Status: next. Start a new four-PR stack from `main`:
+Status: complete. The four-PR stack was merged on 2026-09-03:
 
 ```text
 main
@@ -233,10 +233,10 @@ limited to commands with direct `gh` equivalents.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 2.1 | `api` | `dh api ENDPOINT` | Generic v2 access | Direct counterpart to `gh api`; exposes endpoints without inventing typed commands. |
-| 2.2 | `release/list` | `dh release list` | `listReleases` | Direct counterpart to `gh release list`. |
-| 2.3 | `pr/list` | `dh pr list` | `listPulls` | Direct counterpart to `gh pr list`; state filtering is client-side. |
-| 2.4 | `operation/list` | `dh operation list` | `listOperations` | Dolt operation counterpart to `gh run list`. |
+| 2.1 | [`api` / #33](https://github.com/dolthub/cli/pull/33) | `dh api ENDPOINT` | Generic v2 access | Direct counterpart to `gh api`; exposes endpoints without inventing typed commands. |
+| 2.2 | [`release/list` / #34](https://github.com/dolthub/cli/pull/34) | `dh release list` | `listReleases` | Direct counterpart to `gh release list`. |
+| 2.3 | [`pr/list` / #35](https://github.com/dolthub/cli/pull/35) | `dh pr list` | `listPulls` | Direct counterpart to `gh pr list`; state filtering is client-side. |
+| 2.4 | [`operation/list` / #36](https://github.com/dolthub/cli/pull/36) | `dh operation list` | `listOperations` | Dolt operation counterpart to `gh run list`. |
 
 The three typed commands are database-scoped and accept `-R/--db`.
 Paginated commands accept `--limit N`, defaulting to 30, and reject values below 1 as a
@@ -296,7 +296,7 @@ field names.
 ### Phase 2.4: `operation list`
 
 - Extend the existing `operation` parent group; unlike `operation view`, this
-  command is repository-scoped and authentication is optional.
+  command is database-scoped and authentication is optional.
 - Call `listOperations` for the resolved repository and paginate to `--limit`.
   Do not add client-side type or status filters in this phase.
 - Human columns are `ID`, `TYPE`, `STATUS`, `CREATED`, and `CANCELABLE`. Error
@@ -314,8 +314,15 @@ and the full stack passes cross-platform tests, `go vet`, and lint.
 
 ## Phase 3: composed reads
 
-These remain read-only but need multiple requests, client-side lookup, input
-encoding, or generalized HTTP behavior.
+Status: next. Start a new two-PR stack from `main`.
+
+```text
+main
+  release/view
+    pr/view
+```
+
+These remain read-only but need multiple requests or client-side lookup.
 
 | Order | Branch / PR | Command | API operations | Complexity |
 | ---: | --- | --- | --- | --- |
@@ -351,29 +358,19 @@ Each remains a distinct PR even though `close` and `reopen` are small. Their
 separate branches make the one-command policy explicit and allow independent
 review/revert.
 
-## Phase 6: generic API access
-
-This command is intentionally later than typed reads and synchronous mutations.
-A safe general-purpose HTTP command has a larger input and security surface
-than a narrowly typed operation.
-
-| Order | Branch / PR | Command | API operations | Complexity |
-| ---: | --- | --- | --- | --- |
-| 6.1 | `api` | `dh api ENDPOINT` | Generic | Method inference, typed fields, raw input, headers, pagination, same-origin enforcement, `--include`, `--silent`, `--jq`, and `--template`. |
-
-## Phase 7: asynchronous operation framework and commands
+## Phase 6: asynchronous operation framework and commands
 
 Async behavior is a shared reliability boundary and gets a foundation PR
 before any async command.
 
 | Order | Branch / PR | Command or scope | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 7.1 | `core/operation-waiter` | Internal waiter | `getOperation` | Same-origin href validation, bounded exponential backoff with jitter, cancellation, terminal failure rendering, and deterministic fake-clock tests. |
-| 7.2 | `operation/watch` | `dh operation watch ID` | `getOperation` | Exposes the waiter directly with `--interval`; returns nonzero for failed operations. |
-| 7.3 | `db/fork` | `dh db fork [DB]` | `getCurrentUser`, `createFork`, `getOperation` | Wait by default; `--no-wait` exports the initial OperationRef. |
-| 7.4 | `pr/merge` | `dh pr merge NUMBER` | `mergePull`, `getOperation` | One server-defined merge mode; wait by default. |
+| 6.1 | `core/operation-waiter` | Internal waiter | `getOperation` | Same-origin href validation, bounded exponential backoff with jitter, cancellation, terminal failure rendering, and deterministic fake-clock tests. |
+| 6.2 | `operation/watch` | `dh operation watch ID` | `getOperation` | Exposes the waiter directly with `--interval`; returns nonzero for failed operations. |
+| 6.3 | `db/fork` | `dh db fork [DB]` | `getCurrentUser`, `createFork`, `getOperation` | Wait by default; `--no-wait` exports the initial OperationRef. |
+| 6.4 | `pr/merge` | `dh pr merge NUMBER` | `mergePull`, `getOperation` | One server-defined merge mode; wait by default. |
 
-## Phase 8: SQL
+## Phase 7: SQL
 
 SQL is one leaf command with read and explicitly selected write modes, so both
 modes belong in the same `sql` branch and PR. Splitting modes across PRs would
@@ -382,13 +379,13 @@ ownership rule.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 8.1 | `sql` | `dh sql` | `runSqlReadQueryPost`, `runSqlWriteQuery`, `getOperation` | Accept one of positional SQL, `--file`, or piped stdin. Reads render typed columns/rows and interpret query-level status. Writes require `--write`, branch inputs, auth, and async waiting. |
+| 7.1 | `sql` | `dh sql` | `runSqlReadQueryPost`, `runSqlWriteQuery`, `getOperation` | Accept one of positional SQL, `--file`, or piped stdin. Reads render typed columns/rows and interpret query-level status. Writes require `--write`, branch inputs, auth, and async waiting. |
 
 This phase needs careful tests for dynamic JSON values, nulls, binary/temporal
 representations, terminal tables, warnings, row limits, timeouts, SQL-level
 HTTP-200 failures, large body-encoded queries, and async writes.
 
-## Phase 9: multipart import
+## Phase 8: multipart import
 
 This is last because it combines filesystem I/O, multipart planning, direct
 object-storage requests, checksums, a large API request, progress reporting,
@@ -396,13 +393,13 @@ and asynchronous completion.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 9.1 | `db/import` | `dh db import FILE` | `createImportUpload`, pre-signed part PUTs, `createImport`, `getOperation` | Stream parts without loading the whole file; propagate required upload headers; collect ETags; compute aggregate MD5; wait by default; support all documented file types and import modes. |
+| 8.1 | `db/import` | `dh db import FILE` | `createImportUpload`, pre-signed part PUTs, `createImport`, `getOperation` | Stream parts without loading the whole file; propagate required upload headers; collect ETags; compute aggregate MD5; wait by default; support all documented file types and import modes. |
 
 The import PR should include a fake object-storage server, multipart boundary
 and retry tests, checksum fixtures, interrupted-upload behavior, and tests that
 credentials are never forwarded to pre-signed storage origins.
 
-## Phase 10: commands blocked on new v2 endpoints
+## Phase 9: commands blocked on new v2 endpoints
 
 These commands have direct `gh` equivalents but cannot be implemented from the
 current public v2 contract. Their `dh` branches must not start until the
@@ -411,8 +408,8 @@ the development environment.
 
 | Order | External prerequisite in `ld` | Branch / PR in `dh` | Command |
 | ---: | --- | --- | --- |
-| 10.1 | Add cursor-paginated `GET /api/v2/databases?owner=OWNER` (`listDatabases`) | `db/list` | `dh db list [OWNER]` |
-| 10.2 | Add cursor-paginated `GET /api/v2/user/organizations` (`listCurrentUserOrganizations`) | `org/list` | `dh org list` |
+| 9.1 | Add cursor-paginated `GET /api/v2/databases?owner=OWNER` (`listDatabases`) | `db/list` | `dh db list [OWNER]` |
+| 9.2 | Add cursor-paginated `GET /api/v2/user/organizations` (`listCurrentUserOrganizations`) | `org/list` | `dh org list` |
 
 The API endpoint changes are separate PRs in `ld`; each CLI command still gets
 its own branch and PR in `dh`.
@@ -448,17 +445,6 @@ Excluding existing commands and internal foundation PRs, the proposed command
 PR order is:
 
 ```text
-completion
-config/list
-db/view
-browse
-operation/view
-branch/list
-tag/list
-db/forks
-release/list
-pr/list
-operation/list
 release/view
 pr/view
 db/create
@@ -470,7 +456,6 @@ pr/create
 pr/close
 pr/reopen
 pr/edit
-api
 operation/watch
 db/fork
 pr/merge
@@ -480,6 +465,5 @@ db/list       (blocked on new v2 endpoint)
 org/list      (blocked on new v2 endpoint)
 ```
 
-Existing commands (`auth login`, `auth logout`, `auth status`, `config get`,
-`config set`, and `version`) stay on `main` and are not bundled into new command
-PRs.
+Existing commands and commands completed in Phases 1–2 stay on `main` and are
+not bundled into new command PRs.

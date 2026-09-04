@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 func (c *Client) ListPulls(ctx context.Context, owner, database, token string) ([]PullSummary, string, error) {
@@ -14,4 +15,18 @@ func (c *Client) ListPulls(ctx context.Context, owner, database, token string) (
 	}
 	m, e := c.request(ctx, http.MethodGet, path("databases", owner, database, "pulls"), q, nil, &out)
 	return out, m.NextPageToken, e
+}
+
+// GetPull returns one pull request by its database-local number.
+func (c *Client) GetPull(ctx context.Context, owner, database string, number int64) (Pull, error) {
+	var out Pull
+	err := c.get(ctx, path("databases", owner, database, "pulls", strconv.FormatInt(number, 10)), &out)
+	return out, err
+}
+
+// ListPullComments returns the top-level comments for one pull request.
+func (c *Client) ListPullComments(ctx context.Context, owner, database string, number int64) ([]PullComment, error) {
+	var out []PullComment
+	err := c.get(ctx, path("databases", owner, database, "pulls", strconv.FormatInt(number, 10), "comments"), &out)
+	return out, err
 }
