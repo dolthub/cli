@@ -141,6 +141,9 @@ a hidden compatibility alias.
 4. Render `Operation.error` and return failure when the terminal state is
    `failed`.
 5. Support `--no-wait`; later, a global `--timeout` may bound waiting.
+6. Write a waiting message to stderr. On a TTY, refresh that line with every
+   observed operation status; in non-interactive use, emit one plain line with
+   no terminal control sequences.
 
 Operation status is one of `queued`, `running`, `succeeded`, or `failed`.
 Operation type is one of `import`, `merge`, `sql_write`, `fork`, or `dolt_ci`.

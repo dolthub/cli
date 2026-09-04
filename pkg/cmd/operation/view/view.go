@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var jsonFields = []string{"cancelable", "created_at", "error", "id", "result", "status", "type"}
+var JSONFields = []string{"cancelable", "created_at", "error", "id", "result", "status", "type"}
 
 type apiClient interface {
 	GetOperation(context.Context, string) (dolthub.Operation, error)
@@ -51,7 +51,7 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 			return runF(cmd.Context(), opts)
 		},
 	}
-	cmdutil.AddJSONFlags(cmd, &opts.Exporter, jsonFields)
+	cmdutil.AddJSONFlags(cmd, &opts.Exporter, JSONFields)
 	return cmd
 }
 
@@ -61,7 +61,7 @@ func viewRun(ctx context.Context, opts *Options) error {
 		return err
 	}
 	host := cfg.Host()
-	if err := requireAuthentication(cfg, opts.Credentials, opts.LookupEnv, host); err != nil {
+	if err := RequireAuthentication(cfg, opts.Credentials, opts.LookupEnv, host); err != nil {
 		return err
 	}
 	client := opts.client
@@ -78,10 +78,10 @@ func viewRun(ctx context.Context, opts *Options) error {
 	if opts.Exporter != nil {
 		return opts.Exporter.Write(opts.IO, operation)
 	}
-	return renderHuman(opts.IO, operation)
+	return RenderHuman(opts.IO, operation)
 }
 
-func requireAuthentication(cfg config.Config, store credentials.Store, lookup func(string) (string, bool), host string) error {
+func RequireAuthentication(cfg config.Config, store credentials.Store, lookup func(string) (string, bool), host string) error {
 	if lookup != nil {
 		if token, ok := lookup("DH_TOKEN"); ok && strings.TrimSpace(token) != "" {
 			return nil
@@ -98,7 +98,7 @@ func requireAuthentication(cfg config.Config, store credentials.Store, lookup fu
 	return err
 }
 
-func renderHuman(streams *iostreams.IOStreams, operation dolthub.Operation) error {
+func RenderHuman(streams *iostreams.IOStreams, operation dolthub.Operation) error {
 	table := tableprinter.New(streams, "FIELD", "VALUE")
 	rows := [][2]string{
 		{"ID", operation.ID},
