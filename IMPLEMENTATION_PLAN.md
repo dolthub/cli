@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: active — Phases 0–3 merged; Phase 4 is next
+Status: active — Phases 0–4 merged; Phase 5 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -40,12 +40,9 @@ containing the whole roadmap. A typical phase is:
 
 ```text
 main
-  db/create
-    branch/create
-      tag/create
-        release/create
-          pr/comment
-            pr/create
+  pr/close
+    pr/reopen
+      pr/edit
 ```
 
 Each branch maps to one PR whose base is the branch below it. Submit stacks
@@ -333,21 +330,23 @@ These remain read-only but need multiple requests or client-side lookup.
 
 ## Phase 4: synchronous create commands
 
-Status: next. Start a new six-PR stack from `main`.
+Status: complete. The six-PR stack was merged on 2026-09-04:
 
 These introduce JSON request bodies and interactive/non-interactive input
 validation but return their final resource synchronously.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 4.1 | `db/create` | `dh db create` | `getCurrentUser` when owner omitted, `createDatabase` | Small request body; visibility is required. |
-| 4.2 | `branch/create` | `dh branch create` | `createBranch` | Mutually exclusive `--from-branch` and `--from-commit` map directly to the v2 union. |
-| 4.3 | `tag/create` | `dh tag create` | `createTag` | Builds on branch-create validation; optional message distinguishes annotated and lightweight tags. |
-| 4.4 | `release/create` | `dh release create` | `createRelease` | Adds body/body-file handling and optional tag creation. |
-| 4.5 | `pr/comment` | `dh pr comment` | `createPullComment` | Simple mutation plus editor/stdin/body-source behavior. |
-| 4.6 | `pr/create` | `dh pr create` | `createPull` | Hardest synchronous create due to prompts and same-database versus cross-fork branch references. |
+| 4.1 | [`db/create` / #41](https://github.com/dolthub/cli/pull/41) | `dh db create` | `getCurrentUser` when owner omitted, `createDatabase` | Small request body; visibility is required. |
+| 4.2 | [`branch/create` / #42](https://github.com/dolthub/cli/pull/42) | `dh branch create` | `createBranch` | Mutually exclusive `--from-branch` and `--from-commit` map directly to the v2 union. |
+| 4.3 | [`tag/create` / #43](https://github.com/dolthub/cli/pull/43) | `dh tag create` | `createTag` | Builds on branch-create validation; optional message distinguishes annotated and lightweight tags. |
+| 4.4 | [`release/create` / #44](https://github.com/dolthub/cli/pull/44) | `dh release create` | `createRelease` | Adds body/body-file handling and optional tag creation. |
+| 4.5 | [`pr/comment` / #45](https://github.com/dolthub/cli/pull/45) | `dh pr comment` | `createPullComment` | Simple mutation plus editor/stdin/body-source behavior. |
+| 4.6 | [`pr/create` / #46](https://github.com/dolthub/cli/pull/46) | `dh pr create` | `createPull` | Hardest synchronous create due to prompts and same-database versus cross-fork branch references. |
 
 ## Phase 5: synchronous PR state changes
+
+Status: next. Start a new three-PR stack from `main`.
 
 These share PATCH semantics but remain separate command branches and PRs. Start
 with the fixed state transitions, then add the more general editing surface.
@@ -449,12 +448,6 @@ Excluding existing commands and internal foundation PRs, the proposed command
 PR order is:
 
 ```text
-db/create
-branch/create
-tag/create
-release/create
-pr/comment
-pr/create
 pr/close
 pr/reopen
 pr/edit
@@ -467,5 +460,5 @@ db/list       (blocked on new v2 endpoint)
 org/list      (blocked on new v2 endpoint)
 ```
 
-Existing commands and commands completed in Phases 1–3 stay on `main` and are
+Existing commands and commands completed in Phases 1–4 stay on `main` and are
 not bundled into new command PRs.

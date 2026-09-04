@@ -44,3 +44,10 @@ func (c *Client) CreatePull(ctx context.Context, owner, database string, request
 	_, err := c.request(ctx, http.MethodPost, path("databases", owner, database, "pulls"), nil, request, &out)
 	return out, err
 }
+
+// UpdatePull updates the mutable fields of a pull request.
+func (c *Client) UpdatePull(ctx context.Context, owner, database string, number int64, request UpdatePullRequest) (Pull, error) {
+	var out Pull
+	_, err := c.request(ctx, http.MethodPatch, path("databases", owner, database, "pulls", strconv.FormatInt(number, 10)), nil, request, &out)
+	return out, err
+}
