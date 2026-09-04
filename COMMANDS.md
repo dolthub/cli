@@ -1,6 +1,6 @@
 # `dh` command and API plan
 
-Status: active — Phases 0 and 1 implemented; Phase 2 specified
+Status: active — Phases 0–2 implemented; Phase 3 specified
 
 This document defines the intended command surface for `dh`. It is based on:
 
@@ -96,9 +96,10 @@ dh
   version
 ```
 
-`auth login`, `auth logout`, `auth status`, `browse`, `completion`,
-`config get`, `config list`, `config set`, `db view`, `operation view`, and
-`version` are implemented. The rest are planned.
+`api`, `auth login`, `auth logout`, `auth status`, `browse`, `completion`,
+`config get`, `config list`, `config set`, `db view`, `operation list`,
+`operation view`, `pr list`, `release list`, and `version` are implemented. The
+rest are planned.
 
 ## Global conventions
 
@@ -216,9 +217,9 @@ configuration, credentials, or an HTTP client.
 ### `dh browse`
 
 ```text
-dh browse [NUMBER] [-R REPOSITORY]
-dh browse --pull NUMBER [-R REPOSITORY]
-dh browse --branch NAME [-R REPOSITORY]
+dh browse [NUMBER] [-R DATABASE]
+dh browse --pull NUMBER [-R DATABASE]
+dh browse --branch NAME [-R DATABASE]
 ```
 
 No API call is required. Build a URL from the resolved host and repository and
@@ -426,7 +427,7 @@ seconds.
 ### `dh pr list`
 
 ```text
-dh pr list [-R REPOSITORY]
+dh pr list [-R DATABASE]
            [--state {open|closed|merged|all}] [--limit N]
 ```
 
@@ -443,7 +444,7 @@ draft state because v2 does not expose those concepts.
 
 ```text
 dh pr create --title TEXT [--body TEXT | --body-file FILE]
-             --head [OWNER/REPO:]BRANCH --base BRANCH
+             --head [OWNER/DB:]BRANCH --base BRANCH
 ```
 
 Calls:
@@ -456,7 +457,7 @@ CreatePullRequest { title, description?, from_branch, to_branch }
 
 `--head` may identify a branch in a fork. `--base` is always in the target
 database selected by `--db`; v2 requires `to_branch.database` to match the
-URL repository. Interactive mode prompts for omitted fields. There are no
+URL database. Interactive mode prompts for omitted fields. There are no
 reviewer, assignee, label, project, draft, or maintainer-edit flags.
 
 ### `dh pr view`
@@ -472,6 +473,10 @@ unambiguously; until then NUMBER is required outside interactive selection.
 
 The view cannot show a diff, checks, reviews, mergeability, or commits because
 v2 does not return them.
+
+Structured fields are `pull_number`, `title`, `description`, `state`,
+`from_branch`, `to_branch`, `created_at`, `creator`, and `comments`.
+`comments` is populated when `--comments` is supplied.
 
 ### `dh pr edit`, `close`, and `reopen`
 
@@ -514,7 +519,7 @@ commit-title, commit-message, auto-merge, branch deletion, or admin flags.
 ### `dh release list`
 
 ```text
-dh release list [-R REPOSITORY] [--limit N]
+dh release list [-R DATABASE] [--limit N]
 ```
 
 Calls `listReleases`, defaults to `--limit 30`, and follows cursor pagination.
@@ -557,19 +562,19 @@ view`. If the server later adds `getRelease`, switch without changing the CLI.
 ### `dh operation`
 
 ```text
-dh operation list [-R REPOSITORY] [--limit N]
+dh operation list [-R DATABASE] [--limit N]
 dh operation view ID
 dh operation watch ID [--interval DURATION]
 ```
 
 | Command | API operation | Notes |
 | --- | --- | --- |
-| `operation list` | `listOperations` | Repository-scoped, cursor-paginated. |
+| `operation list` | `listOperations` | Database-scoped, cursor-paginated. |
 | `operation view` | `getOperation` | Operation ID is accepted as opaque input and encoded safely. |
 | `operation watch` | `getOperation` | Poll until terminal state; return failure for `failed`. |
 
 `operation list` defaults to `--limit 30`, is authentication-optional like the
-other repository-scoped public reads, and includes Dolt CI jobs even though v2
+other database-scoped public reads, and includes Dolt CI jobs even though v2
 currently has no command to create or configure them. Structured fields match
 `operation view`: `id`, `type`, `status`, `created_at`, `cancelable`, `error`,
 and `result`.
