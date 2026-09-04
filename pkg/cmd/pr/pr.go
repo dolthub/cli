@@ -6,6 +6,7 @@ import (
 	createcmd "github.com/dolthub/cli/pkg/cmd/pr/create"
 	editcmd "github.com/dolthub/cli/pkg/cmd/pr/edit"
 	listcmd "github.com/dolthub/cli/pkg/cmd/pr/list"
+	mergecmd "github.com/dolthub/cli/pkg/cmd/pr/merge"
 	reopencmd "github.com/dolthub/cli/pkg/cmd/pr/reopen"
 	viewcmd "github.com/dolthub/cli/pkg/cmd/pr/view"
 	"github.com/dolthub/cli/pkg/cmdutil"
@@ -19,6 +20,7 @@ func NewCmdPR(f *cmdutil.Factory) *cobra.Command {
 	c.AddCommand(createcmd.NewCmdCreate(f, nil))
 	c.AddCommand(editcmd.NewCmdEdit(f, nil))
 	c.AddCommand(listcmd.NewCmdList(f, nil))
+	c.AddCommand(mergecmd.NewCmdMerge(f, nil))
 	c.AddCommand(reopencmd.NewCmdReopen(f, nil))
 	c.AddCommand(viewcmd.NewCmdView(f, nil))
 	return c
