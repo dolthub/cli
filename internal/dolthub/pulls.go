@@ -51,3 +51,10 @@ func (c *Client) UpdatePull(ctx context.Context, owner, database string, number 
 	_, err := c.request(ctx, http.MethodPatch, path("databases", owner, database, "pulls", strconv.FormatInt(number, 10)), nil, request, &out)
 	return out, err
 }
+
+// MergePull starts an asynchronous pull request merge operation.
+func (c *Client) MergePull(ctx context.Context, owner, database string, number int64) (OperationRef, error) {
+	var out OperationRef
+	_, err := c.request(ctx, http.MethodPost, path("databases", owner, database, "pulls", strconv.FormatInt(number, 10), "merge"), nil, MergePullRequest{}, &out)
+	return out, err
+}

@@ -2,6 +2,7 @@ package db
 
 import (
 	createcmd "github.com/dolthub/cli/pkg/cmd/db/create"
+	forkcmd "github.com/dolthub/cli/pkg/cmd/db/fork"
 	viewcmd "github.com/dolthub/cli/pkg/cmd/db/view"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ import (
 func NewCmdDB(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{Use: "db", Short: "Work with DoltHub database repositories"}
 	cmd.AddCommand(createcmd.NewCmdCreate(f, nil))
+	cmd.AddCommand(forkcmd.NewCmdFork(f, nil))
 	cmd.AddCommand(viewcmd.NewCmdView(f, nil))
 	return cmd
 }

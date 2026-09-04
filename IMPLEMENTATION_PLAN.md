@@ -1,6 +1,6 @@
 # `dh` phased implementation plan
 
-Status: active — Phases 0–4 merged; Phase 5 is next
+Status: active — Phases 0–5 merged; Phase 6 is next
 
 This plan implements the surface in [COMMANDS.md](./COMMANDS.md) from easiest
 to hardest. It is organized around small, reviewable pull requests and the
@@ -40,9 +40,10 @@ containing the whole roadmap. A typical phase is:
 
 ```text
 main
-  pr/close
-    pr/reopen
-      pr/edit
+  core/operation-waiter
+    operation/watch
+      db/fork
+        pr/merge
 ```
 
 Each branch maps to one PR whose base is the branch below it. Submit stacks
@@ -346,22 +347,24 @@ validation but return their final resource synchronously.
 
 ## Phase 5: synchronous PR state changes
 
-Status: next. Start a new three-PR stack from `main`.
+Status: complete. The three-PR stack was merged on 2026-09-04:
 
 These share PATCH semantics but remain separate command branches and PRs. Start
 with the fixed state transitions, then add the more general editing surface.
 
 | Order | Branch / PR | Command | API operations | Notes |
 | ---: | --- | --- | --- | --- |
-| 5.1 | `pr/close` | `dh pr close NUMBER` | `updatePull` | Establish PATCH behavior with the fixed payload `state: closed`. |
-| 5.2 | `pr/reopen` | `dh pr reopen NUMBER` | `updatePull` | Sends only `state: open` and reuses the typed PATCH client. |
-| 5.3 | `pr/edit` | `dh pr edit NUMBER` | `updatePull` | Adds general partial-update validation and field-presence semantics. |
+| 5.1 | [`pr/close` / #48](https://github.com/dolthub/cli/pull/48) | `dh pr close NUMBER` | `updatePull` | Establish PATCH behavior with the fixed payload `state: closed`. |
+| 5.2 | [`pr/reopen` / #49](https://github.com/dolthub/cli/pull/49) | `dh pr reopen NUMBER` | `updatePull` | Sends only `state: open` and reuses the typed PATCH client. |
+| 5.3 | [`pr/edit` / #50](https://github.com/dolthub/cli/pull/50) | `dh pr edit NUMBER` | `updatePull` | Adds general partial-update validation and field-presence semantics. |
 
 Each remains a distinct PR even though `close` and `reopen` are small. Their
 separate branches make the one-command policy explicit and allow independent
 review/revert.
 
 ## Phase 6: asynchronous operation framework and commands
+
+Status: next. Start a new four-PR stack from `main`.
 
 Async behavior is a shared reliability boundary and gets a foundation PR
 before any async command.
@@ -448,9 +451,6 @@ Excluding existing commands and internal foundation PRs, the proposed command
 PR order is:
 
 ```text
-pr/close
-pr/reopen
-pr/edit
 operation/watch
 db/fork
 pr/merge
@@ -460,5 +460,5 @@ db/list       (blocked on new v2 endpoint)
 org/list      (blocked on new v2 endpoint)
 ```
 
-Existing commands and commands completed in Phases 1–4 stay on `main` and are
+Existing commands and commands completed in Phases 1–5 stay on `main` and are
 not bundled into new command PRs.

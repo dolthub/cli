@@ -1,6 +1,6 @@
 # `dh` command and API plan
 
-Status: active — Phases 0–4 implemented; Phase 5 specified
+Status: active — Phases 0–5 implemented; Phase 6 specified
 
 This document defines the intended command surface for `dh`. It is based on:
 
@@ -98,9 +98,10 @@ dh
 
 `api`, `auth login`, `auth logout`, `auth status`, `branch create`, `browse`,
 `completion`, `config get`, `config list`, `config set`, `db create`, `db view`,
-`operation list`, `operation view`, `pr comment`, `pr create`, `pr list`,
-`pr view`, `release create`, `release list`, `release view`, `tag create`, and
-`version` are implemented. The rest are planned.
+`operation list`, `operation view`, `pr close`, `pr comment`, `pr create`,
+`pr edit`, `pr list`, `pr reopen`, `pr view`, `release create`, `release list`,
+`release view`, `tag create`, and `version` are implemented. The rest are
+planned.
 
 ## Global conventions
 
@@ -140,6 +141,9 @@ a hidden compatibility alias.
 4. Render `Operation.error` and return failure when the terminal state is
    `failed`.
 5. Support `--no-wait`; later, a global `--timeout` may bound waiting.
+6. Write a waiting message to stderr. On a TTY, refresh that line with every
+   observed operation status; in non-interactive use, emit one plain line with
+   no terminal control sequences.
 
 Operation status is one of `queued`, `running`, `succeeded`, or `failed`.
 Operation type is one of `import`, `merge`, `sql_write`, `fork`, or `dolt_ci`.

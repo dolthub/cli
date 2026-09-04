@@ -14,6 +14,14 @@ func (c *Client) GetOperation(ctx context.Context, id string) (Operation, error)
 	return result, err
 }
 
+// GetOperationURL follows an operation reference after validating that it uses
+// the configured DoltHub origin.
+func (c *Client) GetOperationURL(ctx context.Context, href string) (Operation, error) {
+	var result Operation
+	err := c.get(ctx, href, &result)
+	return result, err
+}
+
 func (c *Client) ListOperations(ctx context.Context, owner, database, token string) ([]Operation, string, error) {
 	var result []Operation
 	query := url.Values{}
