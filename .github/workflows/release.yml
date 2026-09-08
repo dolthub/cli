@@ -19,6 +19,8 @@ jobs:
   prepare:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to see draft releases when retrying.
     outputs:
       version: ${{ steps.prepare.outputs.version }}
       sha: ${{ steps.prepare.outputs.sha }}
@@ -98,6 +100,8 @@ jobs:
 
   docker:
     needs: [prepare, draft]
+    permissions:
+      contents: write # Allow the called workflow to look up the draft release.
     uses: ./.github/workflows/push-docker-image.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
