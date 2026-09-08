@@ -74,3 +74,36 @@ dh sql --write --db OWNER/DATABASE --branch feature/update \
 
 Write commands wait for completion and display operation status by default.
 Pass `--no-wait` to print the accepted operation reference immediately.
+
+## Table imports
+
+Upload a local file and import it into a DoltHub table:
+
+```sh
+dh table import people people.csv --db OWNER/DATABASE --branch main \
+  --primary-key id --message "Import people"
+
+dh table import people changes.json --db OWNER/DATABASE --branch main --update
+```
+
+The command creates a table by default. Use one of `--overwrite`, `--update`,
+or `--replace` to import into an existing table. Supported formats are CSV,
+PSV, XLSX, and JSON; JSON requires `--update` or `--replace`. The format is
+inferred from the extension, or supplied with `--file-type`. Primary keys
+can be comma-separated or supplied with repeated `--primary-key` flags.
+
+`--branch` is required because API v2 does not expose the database's default
+branch. `--db` can be omitted when a local Dolt remote identifies the database.
+Files must be regular, nonempty files of at most 1 GiB; stdin is not supported.
+Keep the file unchanged during upload.
+
+Uploads use multipart storage URLs and wait for import completion by default.
+`--no-wait` returns the operation reference after uploading and submitting the
+import. Use `--json id,status,result` for structured completion output, or
+`--no-wait --json id,href` for the accepted operation reference.
+
+Storage URLs expire after 10 minutes. Failed or expired uploads must be
+restarted; this version does not refresh URLs or resume uploads. Ctrl+C stops
+local transfers but does not abort the storage session or cancel an already
+submitted import. After a submission error, check `dh operation list --db
+OWNER/DATABASE` before retrying, since the import may already have been accepted.
