@@ -20,4 +20,7 @@ func TestNewCmdRootDoesNotRequireExternalState(t *testing.T) {
 	if completion, _, err := cmd.Find([]string{"completion"}); err != nil || completion.Name() != "completion" {
 		t.Fatalf("completion command not found: %v", err)
 	}
+	if sql, _, err := cmd.Find([]string{"sql"}); err != nil || sql.Name() != "sql" {
+		t.Fatalf("sql command not found: %v", err)
+	}
 }
