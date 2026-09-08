@@ -18,8 +18,7 @@ The Docker image is `dolthub/cli`, with version tags and `latest`:
 docker run --rm dolthub/cli:latest version
 ```
 
-See [Docker usage](docker/README.md) for authentication and mounted files, and
-[releasing instructions](.github/RELEASING.md) for maintainers.
+See [Docker usage](docker/README.md) for authentication and mounted files.
 
 ## Build
 

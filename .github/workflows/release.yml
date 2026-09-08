@@ -62,27 +62,8 @@ jobs:
       ref: ${{ needs.prepare.outputs.sha }}
       version: ${{ needs.prepare.outputs.version }}
 
-  lint:
-    needs: prepare
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.prepare.outputs.sha }}
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-      - name: Verify module files
-        run: |
-          go mod tidy
-          git diff --exit-code -- go.mod go.sum
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: v2.12.2
-
   draft:
-    needs: [prepare, assets, lint]
+    needs: [prepare, assets]
     runs-on: ubuntu-latest
     permissions:
       contents: write

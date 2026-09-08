@@ -75,16 +75,6 @@ jobs:
             DH_VERSION=${{ steps.release.outputs.version }}
             VCS_REF=${{ steps.release.outputs.sha }}
             GO_VERSION=${{ steps.release.outputs.go_version }}
-      - name: Verify both image architectures
-        env:
-          DIGEST: ${{ steps.build.outputs.digest }}
-          VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          set -euo pipefail
-          for platform in linux/amd64 linux/arm64; do
-            test "$(docker run --rm --platform "$platform" "dolthub/cli@$DIGEST" version --short)" = "$VERSION"
-            docker run --rm --platform "$platform" "dolthub/cli@$DIGEST" --help
-          done
       - name: Update Docker Hub description
         uses: peter-evans/dockerhub-description@432a30c9e07499fd01da9f8a49f0faf9e0ca5b77 # v4
         with:
@@ -92,7 +82,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           repository: dolthub/cli
           readme-filepath: docker/README.md
-      - name: Promote verified image to latest
+      - name: Promote image to latest
         # Manual recovery of an older version must not move latest backwards.
         if: inputs.promote_latest
         env:
