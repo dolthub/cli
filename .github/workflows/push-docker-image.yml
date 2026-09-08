@@ -1,0 +1,100 @@
+name: Publish DoltHub CLI Docker image
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      sha:
+        type: string
+        required: true
+      promote_latest:
+        type: boolean
+        default: false
+    secrets:
+      DOCKER_HUB_USERNAME:
+        required: true
+      DOCKER_HUB_ACCESS_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing release version, e.g. 0.1.0
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          EXPECTED_SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(bash .github/scripts/release-version.sh "$INPUT_VERSION")
+          gh release view "v$version" >/dev/null
+          sha=$(git rev-parse "v$version^{commit}")
+          if [[ -n "$EXPECTED_SHA" ]]; then test "$sha" = "$EXPECTED_SHA"; fi
+          git checkout --detach "$sha"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "go_version=$(awk '$1 == "go" {print $2}' go.mod)" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build and push versioned image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: dolthub/cli:${{ steps.release.outputs.version }}
+          build-args: |
+            DH_VERSION=${{ steps.release.outputs.version }}
+            VCS_REF=${{ steps.release.outputs.sha }}
+            GO_VERSION=${{ steps.release.outputs.go_version }}
+      - name: Verify both image architectures
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          for platform in linux/amd64 linux/arm64; do
+            test "$(docker run --rm --platform "$platform" "dolthub/cli@$DIGEST" version --short)" = "$VERSION"
+            docker run --rm --platform "$platform" "dolthub/cli@$DIGEST" --help
+          done
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@432a30c9e07499fd01da9f8a49f0faf9e0ca5b77 # v4
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          repository: dolthub/cli
+          readme-filepath: docker/README.md
+      - name: Promote verified image to latest
+        # Manual recovery of an older version must not move latest backwards.
+        if: inputs.promote_latest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: docker buildx imagetools create --tag dolthub/cli:latest "dolthub/cli@$DIGEST"

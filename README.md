@@ -5,6 +5,22 @@
 The CLI targets Linux, macOS, and Windows and requires Go 1.26 or newer to build
 from source.
 
+## Install
+
+Download the archive for your operating system and architecture from
+[GitHub Releases](https://github.com/dolthub/cli/releases), verify it against
+`checksums.txt`, and extract `dh` (`dh.exe` on Windows) into a directory on your
+`PATH`.
+
+The Docker image is `dolthub/cli`, with version tags and `latest`:
+
+```sh
+docker run --rm dolthub/cli:latest version
+```
+
+See [Docker usage](docker/README.md) for authentication and mounted files, and
+[releasing instructions](.github/RELEASING.md) for maintainers.
+
 ## Build
 
 ```sh
