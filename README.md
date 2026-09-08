@@ -14,6 +14,27 @@ make build
 
 Run the test suite with `make test` and format Go sources with `make fmt`.
 
+## Authentication
+
+Log in to production DoltHub using your browser:
+
+```sh
+./bin/dh auth login
+./bin/dh auth status
+```
+
+The default host is `www.dolthub.com`, and ordinary builds include the public
+DoltHub CLI OAuth client ID. Login uses PKCE without a client secret, stores
+your credentials, and refreshes access tokens automatically.
+
+If `DH_HOST` or your saved configuration selects another host, use
+`./bin/dh auth login --hostname www.dolthub.com` to log in to production.
+`DH_OAUTH_CLIENT_ID` optionally overrides the built-in client ID; development
+and custom hosts require their own client ID. Credentials issued to another
+OAuth client require that client's override or a fresh login with the default.
+
+You can also authenticate with `DH_TOKEN`. Unset it before using browser login.
+
 ## SQL
 
 Run a read query against a branch, tag, or commit:
@@ -38,4 +59,3 @@ dh sql --write --db OWNER/DATABASE --branch feature/update \
 
 Write commands wait for completion and display operation status by default.
 Pass `--no-wait` to print the accepted operation reference immediately.
-

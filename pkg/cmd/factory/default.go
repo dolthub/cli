@@ -28,9 +28,9 @@ const (
 	productionHost   = "www.dolthub.com"
 )
 
-// productionOAuthClientID is populated with -X for release builds once the
-// shared, DoltHub-owned production OAuth application is registered.
-var productionOAuthClientID string
+// productionOAuthClientID is the registered public DoltHub CLI application.
+// Ordinary builds include it; custom builds may override it with -X.
+var productionOAuthClientID = "dhoci.v1.nbdj3mjpe8sdes2c7i1i9ul3l2jm091h24o2s7f462aj3b55qsv0"
 
 // New constructs the production command factory from process-level inputs.
 func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
@@ -163,7 +163,7 @@ func oauthClientID(host string, lookupEnv func(string) (string, bool)) (string, 
 	if strings.EqualFold(strings.TrimSpace(host), productionHost) && strings.TrimSpace(productionOAuthClientID) != "" {
 		return strings.TrimSpace(productionOAuthClientID), nil
 	}
-	return "", fmt.Errorf("OAuth client ID is not configured for %s", host)
+	return "", fmt.Errorf("OAuth client ID is not configured for %s; set %s for this host", host, OAuthClientIDEnv)
 }
 
 func webOrigin(host string) (*url.URL, error) {
