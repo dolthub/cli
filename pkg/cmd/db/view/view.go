@@ -69,7 +69,11 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	cmd.Flags().BoolVar(&opts.Forks, "forks", false, "Include immediate forks")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open the database in a browser")
 	cmdutil.AddJSONFlags(cmd, &opts.Exporter, append(jsonFields, "forks"))
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh db view OWNER/people\ndh db view OWNER/people --json name,visibility", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "DATABASE", Description: "Database in [HOST/]OWNER/DB form; when omitted, use --db, DH_REPO, saved repo, or local Dolt remotes.", Optional: true}},
+		Constraints: []string{"A positional DATABASE and --db cannot be combined. --web cannot be combined with structured output. --forks requests immediate forks; it does not recursively traverse the fork network."},
+		Output:      "Prints database details, optionally including immediate forks. --json selects fields; --web opens the browser instead.",
+	})
 }
 
 func viewRun(ctx context.Context, opts *Options) error {

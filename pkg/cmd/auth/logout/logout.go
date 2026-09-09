@@ -31,7 +31,10 @@ func NewCmdLogout(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	cmd := &cobra.Command{Use: "logout", Short: "Log out of DoltHub", Args: cmdutil.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return runF(cmd.Context(), opts) }}
 	cmd.Flags().StringVar(&opts.Host, "hostname", "", "DoltHub hostname")
 	cmd.Flags().BoolVarP(&opts.Yes, "yes", "y", false, "Skip confirmation")
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh auth logout --yes", cmdutil.DocMetadata{
+		Constraints: []string{"If DH_TOKEN is set, unset the environment variable instead. Logout does not clear that variable."},
+		Output:      "Removes the saved active identity and its local credential for the selected host, then prints confirmation. Interactive use asks for confirmation unless --yes is set.",
+	})
 }
 func logoutRun(_ context.Context, opts *Options) error {
 	if token, ok := opts.LookupEnv("DH_TOKEN"); ok && token != "" {

@@ -41,7 +41,10 @@ func NewCmdList(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	cmdutil.AddDatabaseFlag(c, &o.Repository)
 	c.Flags().IntVar(&o.Limit, "limit", 30, "Maximum number of releases")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh release list --db OWNER/people", cmdutil.DocMetadata{
+		Constraints: []string{"--limit must be positive."},
+		Output:      "Prints releases, or a JSON array of selected fields. Fetches additional API pages up to --limit.",
+	})
 }
 func listRun(ctx context.Context, o *Options) error {
 	r, e := o.ResolveRepository(ctx, o.Repository)

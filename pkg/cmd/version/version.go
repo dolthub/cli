@@ -34,7 +34,9 @@ func NewCmdVersion(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command
 		},
 	}
 	cmd.Flags().BoolVar(&opts.Short, "short", false, "Print only the version number")
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh version\ndh version --short", cmdutil.DocMetadata{
+		Output: "Prints dh version followed by the build version. --short prints only the version.",
+	})
 }
 
 func versionRun(opts *Options) error {

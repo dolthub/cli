@@ -61,7 +61,11 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	c.Flags().BoolVarP(&o.Comments, "comments", "c", false, "View pull request comments")
 	c.Flags().BoolVarP(&o.Web, "web", "w", false, "Open the pull request in a browser")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr view 1 --db OWNER/people --comments", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number in the selected database.", Optional: false}},
+		Constraints: []string{"--web cannot be combined with structured output."},
+		Output:      "Prints pull request details, optionally including comments; --json selects fields and --web opens the browser.",
+	})
 }
 
 func viewRun(ctx context.Context, o *Options) error {

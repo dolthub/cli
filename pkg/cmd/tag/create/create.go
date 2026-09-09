@@ -45,7 +45,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	c.Flags().StringVar(&o.FromCommit, "from-commit", "", "Source commit SHA")
 	c.Flags().StringVarP(&o.Message, "message", "m", "", "Tag annotation message")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh tag create v1 --db OWNER/people --from-branch main --message \"First dataset\"", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "NAME", Description: "New tag name.", Optional: false}},
+		Constraints: []string{"Exactly one of --from-branch or --from-commit is required. --message supplies an annotation."},
+		Output:      "Prints the created tag and commit, or selected JSON fields.",
+	})
 }
 func createRun(ctx context.Context, o *Options) error {
 	source, err := cmdutil.RevisionSource(o.FromBranch, o.FromCommit)

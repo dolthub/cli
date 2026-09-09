@@ -23,12 +23,15 @@ func NewCmdList(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command {
 	if runF == nil {
 		runF = listRun
 	}
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List configuration values",
 		Args:  cmdutil.NoArgs,
 		RunE:  func(_ *cobra.Command, _ []string) error { return runF(opts) },
 	}
+	return cmdutil.WithDocs(cmd, "dh config list", cmdutil.DocMetadata{
+		Output: "Prints KEY, VALUE, and SOURCE for host and repo, showing environment, saved configuration, or default/unset values. It does not discover local remotes.",
+	})
 }
 
 func listRun(opts *Options) error {

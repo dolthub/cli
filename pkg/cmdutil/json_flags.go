@@ -25,6 +25,10 @@ type Exporter interface {
 // AddJSONFlags adds gh-compatible structured output flags and validates the
 // requested fields before command execution.
 func AddJSONFlags(cmd *cobra.Command, target *Exporter, fields []string) {
+	if cmd.Long == "" {
+		cmd.Long = cmd.Short
+	}
+	cmd.Long += "\n\nUse --json with a comma-separated list of fields for structured output. --jq and --template transform the selected JSON and require --json."
 	cmd.Flags().StringSlice("json", nil, "Output JSON with the specified `fields`")
 	cmd.Flags().String("jq", "", "Filter JSON output using a jq `expression`")
 	cmd.Flags().String("template", "", "Format JSON output using a Go template")

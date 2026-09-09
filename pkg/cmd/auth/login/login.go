@@ -29,7 +29,10 @@ func NewCmdLogin(f *cmdutil.Factory, runF func(context.Context, *Options) error)
 	}
 	cmd := &cobra.Command{Use: "login", Short: "Log in to DoltHub in a web browser", Args: cmdutil.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return runF(cmd.Context(), opts) }}
 	cmd.Flags().StringVar(&opts.Host, "hostname", "", "DoltHub hostname")
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh auth login\ndh auth login --hostname www.dolthub.com", cmdutil.DocMetadata{
+		Constraints: []string{"Unset DH_TOKEN before browser login. The default production host includes a public OAuth client ID; custom hosts require DH_OAUTH_CLIENT_ID. --hostname overrides DH_HOST and saved host configuration for login."},
+		Output:      "Opens browser authentication using OAuth PKCE, saves credentials, and prints the signed-in identity. Access tokens refresh automatically during authenticated requests. The system keyring is preferred; an unavailable keyring falls back to a user credential file with a notice.",
+	})
 }
 func loginRun(ctx context.Context, opts *Options) error {
 	if token, ok := opts.LookupEnv("DH_TOKEN"); ok && token != "" {

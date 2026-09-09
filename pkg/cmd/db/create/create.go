@@ -60,7 +60,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	c.Flags().BoolVar(&o.Public, "public", false, "Make the database public")
 	c.Flags().BoolVar(&o.Private, "private", false, "Make the database private")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh db create OWNER/people --private", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "[OWNER/]NAME", Description: "Database name; owner defaults to the authenticated user. Interactive use can prompt for the name.", Optional: true}},
+		Constraints: []string{"--public and --private are mutually exclusive. Noninteractive use requires a name and one visibility flag. Interactive use prompts for missing name, visibility, and optionally description."},
+		Output:      "Prints the created database identifier and browser URL, or the selected database fields with --json.",
+	})
 }
 
 func createRun(ctx context.Context, o *Options) error {

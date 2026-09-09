@@ -65,7 +65,11 @@ func NewCmdBrowse(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	cmdutil.AddDatabaseFlag(cmd, &opts.Repository)
 	cmd.Flags().IntVar(&opts.Pull, "pull", 0, "Open a pull request by number")
 	cmd.Flags().StringVar(&opts.Branch, "branch", "", "Open a branch")
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh browse --db OWNER/people\ndh browse 1 --db OWNER/people", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number; omit to open the database or use a flag selector.", Optional: true}},
+		Constraints: []string{"Positional NUMBER, --pull, and --branch are mutually exclusive selectors."},
+		Output:      "Opens the selected database, branch, or pull request in a browser.",
+	})
 }
 
 func browseRun(ctx context.Context, opts *Options) error {

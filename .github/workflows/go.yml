@@ -8,11 +8,13 @@ on:
       - '**/*.go'
       - go.mod
       - go.sum
+      - '.github/workflows/go.yml'
   pull_request:
     paths:
       - '**/*.go'
       - go.mod
       - go.sum
+      - '.github/workflows/go.yml'
 
 permissions:
   contents: read
@@ -51,3 +53,11 @@ jobs:
 
       - name: Build dh
         run: go build ./cmd/dh
+
+      - name: Verify offline documentation export
+        shell: bash
+        run: |
+          executable=./dh
+          if [[ "$RUNNER_OS" == Windows ]]; then executable=./dh.exe; fi
+          "$executable" generate-docs --output dist/docs
+          "$executable" generate-docs --output dist/docs --check

@@ -19,11 +19,16 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command {
 	if runF == nil {
 		runF = setRun
 	}
-	return &cobra.Command{Use: "set KEY VALUE", Short: "Set a configuration value", Args: cmdutil.ExactArgs(2), RunE: func(_ *cobra.Command, args []string) error {
+	cmd := &cobra.Command{Use: "set KEY VALUE", Short: "Set a configuration value", Args: cmdutil.ExactArgs(2), RunE: func(_ *cobra.Command, args []string) error {
 		opts.Key = args[0]
 		opts.Value = args[1]
 		return runF(opts)
 	}}
+	return cmdutil.WithDocs(cmd, "dh config set repo OWNER/DATABASE\ndh config set host www.dolthub.com", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "KEY", Description: "Supported configuration key: host or repo.", Optional: false}, {Name: "VALUE", Description: "Hostname for host, or [HOST/]OWNER/DB for repo.", Optional: false}},
+		Constraints: []string{"Values must not be empty. Config is saved under the platform user config directory in dh/config.json."},
+		Output:      "Saves the configuration without printing a success message. Environment overrides still take precedence.",
+	})
 }
 
 func setRun(opts *Options) error {

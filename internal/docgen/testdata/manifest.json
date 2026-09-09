@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generator_version": 1,
+  "cli_version": "1.2.3",
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_dirty": false,
+  "publication_ready": true,
+  "commands": [
+    {
+      "path": "dh",
+      "summary": "Work with databases",
+      "page": "commands/README.md",
+      "anchor": "dh"
+    },
+    {
+      "path": "dh old",
+      "summary": "Older group",
+      "page": "commands/old.md",
+      "anchor": "dh-old"
+    },
+    {
+      "path": "dh pr",
+      "summary": "Review changes",
+      "page": "commands/pr.md",
+      "anchor": "dh-pr"
+    },
+    {
+      "path": "dh pr create",
+      "summary": "Create a review",
+      "page": "commands/pr.md",
+      "anchor": "dh-pr-create",
+      "aliases": [
+        "add",
+        "new"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "filename": "commands/README.md",
+      "title": "DoltHub CLI command reference",
+      "description": "Commands, flags, examples, and output formats for dh.",
+      "route": "/products/dolthub/cli/commands",
+      "sha256": "cc33d51fe7bca01181189f9110114068dcda54afb3fc1a93ce74d7ebc0313d19"
+    },
+    {
+      "filename": "commands/old.md",
+      "title": "dh old",
+      "description": "Older group",
+      "route": "/products/dolthub/cli/commands/old",
+      "sha256": "4d956da5a61f811cf7f4687ffc40b482d97c06ecde43f5b917217ae0223d5d94"
+    },
+    {
+      "filename": "commands/pr.md",
+      "title": "dh pr",
+      "description": "Review changes",
+      "route": "/products/dolthub/cli/commands/pr",
+      "sha256": "61c6d103fcfda8953517b515fe755e049b361b499009ac78f526d462afcce000"
+    }
+  ]
+}

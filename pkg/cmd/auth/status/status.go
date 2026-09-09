@@ -31,7 +31,10 @@ func NewCmdStatus(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	if runF == nil {
 		runF = statusRun
 	}
-	return &cobra.Command{Use: "status", Short: "View authentication status", Args: cmdutil.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return runF(cmd.Context(), opts) }}
+	cmd := &cobra.Command{Use: "status", Short: "View authentication status", Args: cmdutil.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return runF(cmd.Context(), opts) }}
+	return cmdutil.WithDocs(cmd, "dh auth status", cmdutil.DocMetadata{
+		Output: "Checks the configured host and reports the active identity and credential source without printing the token. Returns an authentication error when credentials are missing or invalid.",
+	})
 }
 func statusRun(ctx context.Context, opts *Options) error {
 	cfg, err := opts.Config()

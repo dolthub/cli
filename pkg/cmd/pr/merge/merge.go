@@ -53,7 +53,10 @@ func NewCmdMerge(f *cmdutil.Factory, runF func(context.Context, *Options) error)
 	cmdutil.AddDatabaseFlag(c, &o.Repository)
 	c.Flags().BoolVar(&o.NoWait, "no-wait", false, "Return after the merge is accepted")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr merge 1 --db OWNER/people", cmdutil.DocMetadata{
+		Arguments: []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number in the selected database.", Optional: false}},
+		Output:    "Waits for completion and prints operation details by default. Progress goes to stderr. --json selects operation fields. With --no-wait, prints the accepted ID and HREF instead; use --json id,href for structured acceptance. Acceptance is not completion. A failed operation returns a nonzero exit status. Interrupting the local wait does not cancel the remote operation.",
+	})
 }
 func mergeRun(ctx context.Context, o *Options) error {
 	r, err := o.ResolveRepository(ctx, o.Repository)
