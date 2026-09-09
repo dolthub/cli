@@ -29,4 +29,10 @@ func TestAddDatabaseFlagHidesRepoAlias(t *testing.T) {
 	if help := cmd.Flags().FlagUsages(); strings.Contains(help, "--repo") || !strings.Contains(help, "--db") {
 		t.Fatalf("flag help = %q", help)
 	}
+	if strings.Contains(cmd.Long, "config set repo") || !strings.Contains(cmd.Long, "config set db") {
+		t.Fatalf("long help = %q", cmd.Long)
+	}
+	if strings.Contains(cmd.Long, "DH_REPO") || !strings.Contains(cmd.Long, "DH_DB") {
+		t.Fatalf("long help = %q", cmd.Long)
+	}
 }

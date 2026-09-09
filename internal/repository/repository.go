@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+const (
+	DatabaseEnv        = "DH_DB"
+	RepositoryEnvAlias = "DH_REPO"
+)
+
 // Repository identifies a DoltHub repository.
 type Repository struct {
 	Host  string `json:"host"`
@@ -15,6 +20,20 @@ type Repository struct {
 
 // FullName returns OWNER/REPOSITORY.
 func (r Repository) FullName() string { return r.Owner + "/" + r.Name }
+
+// LookupDatabaseEnv returns the canonical database environment value, falling
+// back to the legacy repository alias. Empty values are treated as unset.
+func LookupDatabaseEnv(lookup func(string) (string, bool)) (value, name string, ok bool) {
+	if lookup == nil {
+		return "", "", false
+	}
+	for _, name := range []string{DatabaseEnv, RepositoryEnvAlias} {
+		if value, ok := lookup(name); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value), name, true
+		}
+	}
+	return "", "", false
+}
 
 // Parse parses OWNER/REPOSITORY, HOST/OWNER/REPOSITORY, or a DoltHub URL.
 func Parse(value, defaultHost string) (Repository, error) {

@@ -66,13 +66,24 @@ func TestEnvironmentPrecedence(t *testing.T) {
 	m := NewMemory()
 	m.DefaultHost = "stored"
 	m.SetDefaultRepository(repository.Repository{Host: "stored", Owner: "old", Name: "repo"})
-	values := map[string]string{"DH_HOST": "env.example", "DH_REPO": "new/repo"}
+	values := map[string]string{"DH_HOST": "env.example", "DH_DB": "new/db", "DH_REPO": "old/repo"}
 	c := Environment{Config: m, LookupEnv: func(k string) (string, bool) { v, ok := values[k]; return v, ok }}
 	if c.Host() != "env.example" {
 		t.Fatal(c.Host())
 	}
 	r, ok := c.DefaultRepository()
-	if !ok || r.Host != "env.example" || r.FullName() != "new/repo" {
+	if !ok || r.Host != "env.example" || r.FullName() != "new/db" {
+		t.Fatalf("repo=%#v", r)
+	}
+}
+
+func TestEnvironmentLegacyRepositoryAlias(t *testing.T) {
+	m := NewMemory()
+	c := Environment{Config: m, LookupEnv: func(k string) (string, bool) {
+		return "legacy/repo", k == repository.RepositoryEnvAlias
+	}}
+	r, ok := c.DefaultRepository()
+	if !ok || r.FullName() != "legacy/repo" {
 		t.Fatalf("repo=%#v", r)
 	}
 }

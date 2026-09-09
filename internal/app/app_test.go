@@ -163,7 +163,7 @@ func TestSemanticErrorHandling(t *testing.T) {
 func TestGenerateDocsOffline(t *testing.T) {
 	t.Setenv("DH_TOKEN", "docgen-token-sentinel")
 	t.Setenv("DH_HOST", "invalid host")
-	t.Setenv("DH_REPO", "invalid repository")
+	t.Setenv("DH_DB", "invalid database")
 	configDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configDir)
 	if err := os.Mkdir(filepath.Join(configDir, "dh"), 0755); err != nil {
