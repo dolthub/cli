@@ -56,7 +56,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	c.Flags().StringVarP(&o.NotesFile, "notes-file", "F", "", "Read release notes from file")
 	c.Flags().BoolVar(&o.CreateTag, "create-tag", false, "Create the tag if it does not exist")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh release create v1 --db OWNER/people --title \"First dataset\" --target COMMIT_SHA --create-tag", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "TAG", Description: "Release tag name.", Optional: false}},
+		Constraints: []string{"--title and --target are required. --target is an exact commit SHA. Use --create-tag if the tag does not yet exist.", "--notes and --notes-file are mutually exclusive; --notes-file - reads stdin."},
+		Output:      "Prints the release tag, title, and commit, or selected JSON fields.",
+	})
 }
 func createRun(ctx context.Context, o *Options) error {
 	notes, err := cmdutil.ReadTextSource(o.Notes, o.NotesFile)

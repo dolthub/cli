@@ -56,7 +56,10 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	c.Flags().StringVarP(&o.Head, "head", "H", "", "Source [OWNER/DB:]BRANCH")
 	c.Flags().StringVarP(&o.Base, "base", "B", "", "Target branch")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr create --db OWNER/people --head feature/people --base main --title \"Update people\"", cmdutil.DocMetadata{
+		Constraints: []string{"Noninteractive use requires --title, --head, and --base; interactive use prompts for missing values.", "--head accepts BRANCH or OWNER/DB:BRANCH for a cross-database source. --base is a branch in the selected target database.", "--body and --body-file are mutually exclusive; --body-file - reads stdin."},
+		Output:      "Prints the created pull request number, title, state, and source/target branches, or selected JSON fields.",
+	})
 }
 func createRun(ctx context.Context, o *Options) error {
 	r, err := o.ResolveRepository(ctx, o.Repository)

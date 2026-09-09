@@ -54,7 +54,11 @@ func NewCmdFork(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	c.Flags().StringVar(&o.Organization, "org", "", "Organization or user to own the fork")
 	c.Flags().BoolVar(&o.NoWait, "no-wait", false, "Return after the fork is accepted")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh db fork OWNER/people --org MY_USER", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "DATABASE", Description: "Database in [HOST/]OWNER/DB form; when omitted, use --db, DH_REPO, saved repo, or local Dolt remotes.", Optional: true}},
+		Constraints: []string{"A positional DATABASE and --db cannot be combined. --org selects the owner of the new fork; when omitted, the authenticated user owns it."},
+		Output:      "Waits for completion and prints operation details by default. Progress goes to stderr. --json selects operation fields. With --no-wait, prints the accepted ID and HREF instead; use --json id,href for structured acceptance. Acceptance is not completion. A failed operation returns a nonzero exit status. Interrupting the local wait does not cancel the remote operation.",
+	})
 }
 func forkRun(ctx context.Context, o *Options) error {
 	r, err := o.ResolveRepository(ctx, o.Repository)

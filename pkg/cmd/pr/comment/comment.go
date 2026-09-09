@@ -57,7 +57,11 @@ func NewCmdComment(f *cmdutil.Factory, runF func(context.Context, *Options) erro
 	c.Flags().StringVarP(&o.Body, "body", "b", "", "Comment body")
 	c.Flags().StringVarP(&o.BodyFile, "body-file", "F", "", "Read comment body from file")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr comment 1 --db OWNER/people --body \"Ready for review\"", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number in the selected database.", Optional: false}},
+		Constraints: []string{"Comment body must not be empty. Noninteractive use requires --body or --body-file; interactive use can prompt. The flags are mutually exclusive. --body-file - reads stdin."},
+		Output:      "Prints the comment author, creation time, and body, or selected JSON fields.",
+	})
 }
 func commentRun(ctx context.Context, o *Options) error {
 	body, err := cmdutil.ReadTextSource(o.Body, o.BodyFile)

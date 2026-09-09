@@ -42,7 +42,10 @@ func NewCmdReopen(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	}, RunE: func(c *cobra.Command, _ []string) error { return runF(c.Context(), o) }}
 	cmdutil.AddDatabaseFlag(c, &o.Repository)
 	cmdutil.AddJSONFlags(c, &o.Exporter, shared.JSONFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr reopen 1 --db OWNER/people", cmdutil.DocMetadata{
+		Arguments: []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number in the selected database.", Optional: false}},
+		Output:    "Prints the updated pull request, or selected JSON fields.",
+	})
 }
 func reopenRun(ctx context.Context, o *Options) error {
 	r, err := o.ResolveRepository(ctx, o.Repository)

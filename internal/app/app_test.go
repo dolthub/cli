@@ -1,8 +1,11 @@
 package app
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -152,5 +155,36 @@ func TestSemanticErrorHandling(t *testing.T) {
 				t.Errorf("usage present = %v, want %v; stderr = %q", got, tt.wantUsage, stderr.String())
 			}
 		})
+	}
+}
+
+// Documentation export must work through the production entrypoint even when
+// authentication/config environment values are unusable. No API call is needed.
+func TestGenerateDocsOffline(t *testing.T) {
+	t.Setenv("DH_TOKEN", "docgen-token-sentinel")
+	t.Setenv("DH_HOST", "invalid host")
+	t.Setenv("DH_REPO", "invalid repository")
+	configDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+	if err := os.Mkdir(filepath.Join(configDir, "dh"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "dh", "config.json"), []byte("{invalid"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(t.TempDir(), "docs")
+	for _, tc := range []struct {
+		args []string
+		want int
+	}{
+		{[]string{"generate-docs"}, 2},
+		{[]string{"generate-docs", "--output", output, "--check"}, 1},
+		{[]string{"generate-docs", "--output", output}, 0},
+		{[]string{"generate-docs", "--output", output, "--check"}, 0},
+	} {
+		var stdout, stderr bytes.Buffer
+		if code := Main(tc.args, strings.NewReader(""), &stdout, &stderr, "dev"); code != tc.want {
+			t.Fatalf("%v: code %d, stderr %s", tc.args, code, stderr.String())
+		}
 	}
 }

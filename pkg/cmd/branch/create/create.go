@@ -44,7 +44,11 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	c.Flags().StringVar(&o.FromBranch, "from-branch", "", "Source branch")
 	c.Flags().StringVar(&o.FromCommit, "from-commit", "", "Source commit SHA")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh branch create feature/people --db OWNER/people --from-branch main", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "NAME", Description: "New branch name.", Optional: false}},
+		Constraints: []string{"Exactly one of --from-branch or --from-commit is required."},
+		Output:      "Prints the created branch and commit, or selected JSON fields.",
+	})
 }
 func createRun(ctx context.Context, o *Options) error {
 	source, err := cmdutil.RevisionSource(o.FromBranch, o.FromCommit)

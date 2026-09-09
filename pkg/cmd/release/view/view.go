@@ -51,7 +51,11 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	cmdutil.AddDatabaseFlag(c, &o.Repository)
 	c.Flags().BoolVarP(&o.Web, "web", "w", false, "Open the release in a browser")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh release view v1 --db OWNER/people", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "TAG", Description: "Release tag name.", Optional: false}},
+		Constraints: []string{"--web cannot be combined with structured output."},
+		Output:      "Prints release details or selected JSON fields. --web opens the release in the browser.",
+	})
 }
 
 func viewRun(ctx context.Context, o *Options) error {

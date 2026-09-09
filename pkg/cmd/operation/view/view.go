@@ -52,7 +52,11 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 		},
 	}
 	cmdutil.AddJSONFlags(cmd, &opts.Exporter, JSONFields)
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh operation view OPERATION_ID", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "ID", Description: "Operation ID returned by an asynchronous command; resolved on the configured host.", Optional: false}},
+		Constraints: []string{"Authentication is required. Uses DH_HOST or saved/default host configuration, not a database selector."},
+		Output:      "Prints current operation details or selected JSON fields. This is a snapshot; use dh operation watch to wait for completion.",
+	})
 }
 
 func viewRun(ctx context.Context, opts *Options) error {

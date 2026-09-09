@@ -52,7 +52,11 @@ func NewCmdWatch(f *cmdutil.Factory, runF func(context.Context, *Options) error)
 	}
 	c.Flags().DurationVar(&o.Interval, "interval", operationwaiter.DefaultInterval, "Initial polling interval")
 	cmdutil.AddJSONFlags(c, &o.Exporter, viewcmd.JSONFields)
-	return c
+	return cmdutil.WithDocs(c, "dh operation watch OPERATION_ID --json id,status,result", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "ID", Description: "Operation ID returned by an asynchronous command; resolved on the configured host.", Optional: false}},
+		Constraints: []string{"Authentication is required. --interval must be positive; it sets the initial polling interval. Uses the configured host."},
+		Output:      "Polls until the operation finishes and prints its details or selected JSON fields. Progress goes to stderr; failed or canceled operations return a nonzero exit status. Stopping the local wait does not cancel remote work.",
+	})
 }
 func watchRun(ctx context.Context, o *Options) error {
 	cfg, err := o.Config()

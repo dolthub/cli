@@ -56,7 +56,11 @@ func NewCmdAPI(f *cmdutil.Factory, runF func(context.Context, *Options) error) *
 		}
 		return nil
 	}
-	return c
+	return cmdutil.WithDocs(c, "dh api user\ndh api databases/OWNER/DATABASE --jq .", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "ENDPOINT", Description: "API endpoint relative to /api/v2/, optionally with a query string. Absolute URLs and paths outside this prefix are rejected.", Optional: false}},
+		Constraints: []string{"Defaults to GET, or POST when the request body is nonempty; --method overrides this.", "--raw-field builds string JSON values; --field recognizes booleans, null, and signed integers; other values stay strings. --input reads the request body from a file (or - for stdin); additional fields then become query parameters.", "--paginate follows next-page tokens. --slurp requires --paginate and wraps complete page responses in an array. --jq and --template are mutually exclusive."},
+		Output:      "Prints the raw API response body by default. --include also prints HTTP status and headers; --silent suppresses the body. --jq or --template formats the response directly, without --json.",
+	})
 }
 
 func apiRun(ctx context.Context, o *Options) error {

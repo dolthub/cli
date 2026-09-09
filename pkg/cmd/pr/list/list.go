@@ -47,7 +47,10 @@ func NewCmdList(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	c.Flags().IntVar(&o.Limit, "limit", 30, "Maximum number of pull requests")
 	c.Flags().StringVar(&o.State, "state", "open", "Filter by state: open, closed, merged, or all")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr list --db OWNER/people --state open", cmdutil.DocMetadata{
+		Constraints: []string{"--state must be open, closed, merged, or all. --limit must be positive."},
+		Output:      "Prints pull request rows, or a JSON array of selected fields. Fetches additional API pages up to --limit.",
+	})
 }
 func listRun(ctx context.Context, o *Options) error {
 	r, e := o.ResolveRepository(ctx, o.Repository)

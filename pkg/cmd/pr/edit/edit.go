@@ -59,7 +59,11 @@ func NewCmdEdit(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	c.Flags().StringVarP(&o.Body, "body", "b", "", "Set the pull request body")
 	c.Flags().StringVarP(&o.BodyFile, "body-file", "F", "", "Read the pull request body from file")
 	cmdutil.AddJSONFlags(c, &o.Exporter, shared.JSONFields)
-	return c
+	return cmdutil.WithDocs(c, "dh pr edit 1 --db OWNER/people --title \"Update people data\"", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number in the selected database.", Optional: false}},
+		Constraints: []string{"At least one of --title, --body, or --body-file is required. --body and --body-file are mutually exclusive; --body-file - reads stdin."},
+		Output:      "Prints the updated pull request, or selected JSON fields.",
+	})
 }
 func editRun(ctx context.Context, o *Options) error {
 	request := dolthub.UpdatePullRequest{}

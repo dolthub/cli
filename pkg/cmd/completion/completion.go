@@ -17,7 +17,10 @@ func NewCmdCompletion() *cobra.Command {
 			return generate(cmd.Root(), cmd.OutOrStdout(), args[0])
 		},
 	}
-	return cmd
+	return cmdutil.WithDocs(cmd, "dh completion bash > dh.bash\ndh completion zsh > _dh", cmdutil.DocMetadata{
+		Arguments: []cmdutil.DocArgument{{Name: "SHELL", Description: "One of bash, fish, powershell, or zsh.", Optional: false}},
+		Output:    "Writes a shell completion script to stdout. Save or source it using your shell's completion setup; this command does not install the script.",
+	})
 }
 
 func generate(root *cobra.Command, out io.Writer, shell string) error {

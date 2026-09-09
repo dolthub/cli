@@ -108,7 +108,12 @@ func NewCmdSQL(f *cmdutil.Factory, runF func(context.Context, *Options) error) *
 	c.Flags().StringVar(&o.FromBranch, "from-branch", "", "Base branch for a write query (defaults to --branch)")
 	c.Flags().BoolVar(&o.NoWait, "no-wait", false, "Return after a write query is accepted")
 	cmdutil.AddJSONFlags(c, &o.Exporter, allJSONFields)
-	return c
+	return cmdutil.WithDocs(c, "dh sql --db OWNER/people --ref main \"select * from people limit 10\"\ndh sql --write --db OWNER/people --branch feature/people --from-branch main --file update.sql", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "QUERY", Description: "SQL text. If omitted, use --file or pipe SQL through stdin.", Optional: true}},
+		Constraints: []string{"Provide only one SQL source: argument, --file, or stdin. --file - reads stdin. Empty queries are rejected.", "--jq and --template require --json. JSON fields must be valid for the selected read/write mode."},
+		Output:      "Reads print rows to stdout and warnings to stderr, or selected JSON fields. Unsuccessful query status returns a nonzero exit code. Writes wait for an operation and print its details; --no-wait prints ID/HREF after acceptance. For acceptance JSON use --json id,href.",
+		Modes:       []cmdutil.DocMode{{Name: "Read queries", Description: "Requires --ref with a branch, tag, or commit. --limit must be positive when supplied; --timeout must be between 1ms and 60s in whole milliseconds. --branch, --from-branch, and --no-wait require write mode.", JSONFields: readJSONFields}, {Name: "Write queries", Description: "Requires --write and --branch. --from-branch defaults to --branch and supplies the source branch. --ref, --limit, and --timeout are read-only flags. Acceptance does not imply successful completion; watch the returned operation ID.", JSONFields: writeJSONFields}},
+	})
 }
 
 func sqlRun(ctx context.Context, o *Options) error {
