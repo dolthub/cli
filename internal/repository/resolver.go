@@ -33,10 +33,8 @@ func (r Resolver) Resolve(ctx context.Context, explicit string) (Repository, err
 	if strings.TrimSpace(explicit) != "" {
 		return Parse(explicit, host)
 	}
-	if r.LookupEnv != nil {
-		if value, ok := r.LookupEnv("DH_REPO"); ok && strings.TrimSpace(value) != "" {
-			return Parse(value, host)
-		}
+	if value, _, ok := LookupDatabaseEnv(r.LookupEnv); ok {
+		return Parse(value, host)
 	}
 	if r.Configured != nil {
 		if configured, ok := r.Configured(); ok {
@@ -56,7 +54,7 @@ func (r Resolver) Resolve(ctx context.Context, explicit string) (Repository, err
 	case 1:
 		return candidates[0], nil
 	case 0:
-		return Repository{}, errors.New("could not determine a DoltHub database; use --db, DH_REPO, or 'dh config set repo OWNER/REPO'")
+		return Repository{}, errors.New("could not determine a DoltHub database; use --db, DH_DB, or 'dh config set db OWNER/DB'")
 	}
 
 	if r.CanPrompt == nil || !r.CanPrompt() || r.Select == nil {

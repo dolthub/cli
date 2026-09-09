@@ -34,7 +34,7 @@ func (c Environment) Host() string {
 func (c Environment) ConfiguredHost() (string, bool) { return c.Config.ConfiguredHost() }
 
 func (c Environment) DefaultRepository() (repository.Repository, bool) {
-	if value, ok := c.LookupEnv("DH_REPO"); ok && value != "" {
+	if value, _, ok := repository.LookupDatabaseEnv(c.LookupEnv); ok {
 		r, err := repository.Parse(value, c.Host())
 		return r, err == nil
 	}

@@ -21,9 +21,9 @@ func NewCmdGet(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command {
 		runF = getRun
 	}
 	cmd := &cobra.Command{Use: "get KEY", Short: "Get a configuration value", Args: cmdutil.ExactArgs(1), RunE: func(_ *cobra.Command, args []string) error { opts.Key = args[0]; return runF(opts) }}
-	return cmdutil.WithDocs(cmd, "dh config get host", cmdutil.DocMetadata{
-		Arguments: []cmdutil.DocArgument{{Name: "KEY", Description: "Supported configuration key: host or repo.", Optional: false}},
-		Output:    "Prints the effective configuration value, including environment overrides. An unset repository produces no output and exits successfully.",
+	return cmdutil.WithDocs(cmd, "dh config get db", cmdutil.DocMetadata{
+		Arguments: []cmdutil.DocArgument{{Name: "KEY", Description: "Supported configuration key: host or db; repo remains accepted as an alias for db.", Optional: false}},
+		Output:    "Prints the effective configuration value, including DH_HOST or DH_DB overrides. An unset database produces no output and exits successfully.",
 	})
 }
 
@@ -36,7 +36,7 @@ func getRun(opts *Options) error {
 	switch opts.Key {
 	case "host":
 		value = cfg.Host()
-	case "repo":
+	case "db", "repo":
 		r, ok := cfg.DefaultRepository()
 		if !ok {
 			return &cmdutil.NoResultsError{}

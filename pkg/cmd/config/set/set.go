@@ -24,10 +24,10 @@ func NewCmdSet(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command {
 		opts.Value = args[1]
 		return runF(opts)
 	}}
-	return cmdutil.WithDocs(cmd, "dh config set repo OWNER/DATABASE\ndh config set host www.dolthub.com", cmdutil.DocMetadata{
-		Arguments:   []cmdutil.DocArgument{{Name: "KEY", Description: "Supported configuration key: host or repo.", Optional: false}, {Name: "VALUE", Description: "Hostname for host, or [HOST/]OWNER/DB for repo.", Optional: false}},
+	return cmdutil.WithDocs(cmd, "dh config set db OWNER/DATABASE\ndh config set host www.dolthub.com", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "KEY", Description: "Supported configuration key: host or db; repo remains accepted as an alias for db.", Optional: false}, {Name: "VALUE", Description: "Hostname for host, or [HOST/]OWNER/DB for db.", Optional: false}},
 		Constraints: []string{"Values must not be empty. Config is saved under the platform user config directory in dh/config.json."},
-		Output:      "Saves the configuration without printing a success message. Environment overrides still take precedence.",
+		Output:      "Saves the configuration without printing a success message. DH_HOST and DH_DB overrides still take precedence.",
 	})
 }
 
@@ -42,7 +42,7 @@ func setRun(opts *Options) error {
 			return cmdutil.FlagErrorf("host cannot be empty")
 		}
 		cfg.SetHost(opts.Value)
-	case "repo":
+	case "db", "repo":
 		r, err := repository.Parse(opts.Value, cfg.Host())
 		if err != nil {
 			return &cmdutil.FlagError{Err: err}

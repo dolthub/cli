@@ -30,7 +30,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command {
 		RunE:  func(_ *cobra.Command, _ []string) error { return runF(opts) },
 	}
 	return cmdutil.WithDocs(cmd, "dh config list", cmdutil.DocMetadata{
-		Output: "Prints KEY, VALUE, and SOURCE for host and repo, showing environment, saved configuration, or default/unset values. It does not discover local remotes.",
+		Output: "Prints KEY, VALUE, and SOURCE for host and db, showing DH_HOST/DH_DB, saved configuration, or default/unset values. It does not discover local remotes.",
 	})
 }
 
@@ -46,7 +46,7 @@ func listRun(opts *Options) error {
 	}
 	table := tableprinter.New(opts.IO, "KEY", "VALUE", "SOURCE")
 	_ = table.AddRow("host", host, hostSource)
-	_ = table.AddRow("repo", repo, repoSource)
+	_ = table.AddRow("db", repo, repoSource)
 	return table.Render()
 }
 
@@ -61,10 +61,10 @@ func hostValue(cfg internalconfig.Config, lookup func(string) (string, bool)) (s
 }
 
 func repoValue(cfg internalconfig.Config, lookup func(string) (string, bool), host string) (string, string, error) {
-	if value, ok := env(lookup, "DH_REPO"); ok {
+	if value, name, ok := repository.LookupDatabaseEnv(lookup); ok {
 		repo, err := repository.Parse(value, host)
 		if err != nil {
-			return "", "", fmt.Errorf("invalid DH_REPO: %w", err)
+			return "", "", fmt.Errorf("invalid %s: %w", name, err)
 		}
 		return displayRepository(repo, host), "environment", nil
 	}

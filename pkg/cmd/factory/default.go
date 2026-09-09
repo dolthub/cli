@@ -125,10 +125,8 @@ func New(appVersion string, io *iostreams.IOStreams) *cmdutil.Factory {
 			Host:      cfg.Host,
 			LookupEnv: f.LookupEnv,
 			Configured: func() (repository.Repository, bool) {
-				if f.LookupEnv != nil {
-					if value, ok := f.LookupEnv("DH_REPO"); ok && strings.TrimSpace(value) != "" {
-						return repository.Repository{}, false
-					}
+				if _, _, ok := repository.LookupDatabaseEnv(f.LookupEnv); ok {
+					return repository.Repository{}, false
 				}
 				return cfg.DefaultRepository()
 			},

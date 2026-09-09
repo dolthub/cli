@@ -64,10 +64,18 @@ func TestDocumentationCoversRealTree(t *testing.T) {
 		}
 	}
 	walk(root)
+	foundDatabaseEnv := false
 	for name, data := range bundle {
 		if strings.Contains(string(data), "--repo") || strings.Contains(string(data), "dh-generate-docs") {
 			t.Errorf("hidden metadata in %s", name)
 		}
+		if strings.Contains(string(data), "DH_REPO") {
+			t.Errorf("legacy database environment alias surfaced in %s", name)
+		}
+		foundDatabaseEnv = foundDatabaseEnv || strings.Contains(string(data), "DH_DB")
+	}
+	if !foundDatabaseEnv {
+		t.Fatal("canonical DH_DB environment variable is missing from generated documentation")
 	}
 	if strings.Contains(string(bundle["commands/pr.md"]), "title: \"dh pr create\"") {
 		t.Fatal("leaf page accidentally generated")
@@ -102,7 +110,7 @@ func TestHiddenGenerateCommand(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "bundle")
 	t.Setenv("DH_TOKEN", "sentinel-token-never-export")
 	t.Setenv("DH_HOST", "not a hostname")
-	t.Setenv("DH_REPO", "not a repo")
+	t.Setenv("DH_DB", "not a database")
 	for _, extra := range [][]string{nil, {"--check"}} {
 		root := NewCmdRoot(factory)
 		root.SetOut(&out)
