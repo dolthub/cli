@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestGoldenAndDeterminism(t *testing.T) {
 	if !reflect.DeepEqual(first, second) {
 		t.Fatal("generation is not deterministic")
 	}
-	for _, name := range []string{"commands/pr.md", "commands/README.md", "manifest.json"} {
+	for _, name := range []string{"commands/README.md", "manifest.json"} {
 		golden := filepath.Join("testdata", strings.ReplaceAll(name, "/", "_"))
 		if os.Getenv("UPDATE_DOCGEN_GOLDEN") == "1" {
 			if err := os.MkdirAll("testdata", 0755); err != nil {
@@ -74,7 +75,7 @@ func TestGoldenAndDeterminism(t *testing.T) {
 			t.Fatalf("%s differs from golden; inspect and run UPDATE_DOCGEN_GOLDEN=1 go test ./internal/docgen", name)
 		}
 	}
-	page := string(first["commands/pr.md"])
+	page := string(first[referencePage])
 	for _, text := range []string{"#dh-pr-create", "{#dh-pr-create}", "local.test", "&#124;", "&#96;", "&lt;html&gt;", "````bash"} {
 		if !strings.Contains(page, text) {
 			t.Errorf("missing %q", text)
@@ -90,32 +91,32 @@ func TestGoldenAndDeterminism(t *testing.T) {
 			t.Errorf("unexpected %q", text)
 		}
 	}
-	if !strings.Contains(string(first["commands/old.md"]), "Deprecated: use pr") {
+	if !strings.Contains(string(first[referencePage]), "Deprecated: use pr") {
 		t.Fatal("lost visible deprecated command")
 	}
 }
-func TestGroupingAndDefaults(t *testing.T) {
+func TestSinglePageAndDefaults(t *testing.T) {
 	root := fixture()
 	base := generated(t, root)
 	group, _, _ := root.Find([]string{"pr"})
 	leaf := cmdutil.WithDocs(&cobra.Command{Use: "list", Short: "List reviews", Run: func(*cobra.Command, []string) {}}, "dh pr list", cmdutil.DocMetadata{Output: "Prints reviews."})
 	group.AddCommand(leaf)
 	withLeaf := generated(t, root)
-	if len(base) != len(withLeaf) {
+	if len(base) != 2 || len(base) != len(withLeaf) {
 		t.Fatal("nested command created a page")
 	}
-	if !strings.Contains(string(withLeaf["commands/pr.md"]), "{#dh-pr-list}") {
+	if !strings.Contains(string(withLeaf[referencePage]), "{#dh-pr-list}") {
 		t.Fatal("missing nested command")
 	}
 	root.AddCommand(&cobra.Command{Use: "db", Short: "Databases"})
-	if len(generated(t, root)) != len(base)+1 {
-		t.Fatal("top-level command must add one page")
+	if len(generated(t, root)) != len(base) {
+		t.Fatal("top-level command created a page")
 	}
 	cmd, _, _ := root.Find([]string{"pr", "create"})
 	if err := cmd.Flags().Set("body", "invocation value"); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(generated(t, root)["commands/pr.md"]), "invocation value") {
+	if strings.Contains(string(generated(t, root)[referencePage]), "invocation value") {
 		t.Fatal("exported invocation value instead of default")
 	}
 }
@@ -161,11 +162,43 @@ func TestCommandInventory(t *testing.T) {
 		if !ok {
 			t.Fatalf("missing page %s", cmd.Page)
 		}
-		if !strings.Contains(string(page), "{#"+cmd.Anchor+"}") {
+		if cmd.Page != referencePage || strings.Count(string(page), "## "+cmd.Path+" {#"+cmd.Anchor+"}") != 1 {
 			t.Errorf("missing anchor %s", cmd.Anchor)
 		}
 		if strings.Contains(cmd.Path, "internal") {
 			t.Fatal("hidden command was exported")
+		}
+	}
+}
+
+func TestReferenceLinksAndOrder(t *testing.T) {
+	bundle := generated(t, fixture())
+	page := string(bundle[referencePage])
+	var manifest Manifest
+	if err := json.Unmarshal(bundle["manifest.json"], &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if len(bundle) != 2 || len(manifest.Pages) != 1 || manifest.Pages[0].Route != BaseRoute || manifest.GeneratorVersion != 2 || manifest.SchemaVersion != 1 {
+		t.Fatal("unexpected bundle contract")
+	}
+	anchors := map[string]bool{}
+	previous := -1
+	for _, command := range manifest.Commands {
+		anchors[command.Anchor] = true
+		position := strings.Index(page, "## "+command.Path+" {#"+command.Anchor+"}")
+		if position <= previous {
+			t.Fatalf("command section out of order: %s", command.Path)
+		}
+		previous = position
+	}
+	links := regexp.MustCompile(`\]\((`+regexp.QuoteMeta(BaseRoute)+`[^)]*)\)`).FindAllStringSubmatch(page, -1)
+	if len(links) == 0 {
+		t.Fatal("missing command links")
+	}
+	for _, link := range links {
+		anchor, ok := strings.CutPrefix(link[1], BaseRoute+"#")
+		if !ok || !anchors[anchor] {
+			t.Errorf("invalid command link: %s", link[1])
 		}
 	}
 }

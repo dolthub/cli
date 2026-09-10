@@ -6,15 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/spf13/cobra"
 )
 
 func TestWriteCheckAndOwnedRemoval(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "docs")
-	root := fixture()
-	root.AddCommand(&cobra.Command{Use: "extra", Short: "Extra group"})
-	before := generated(t, root)
+	before := Bundle{}
+	for _, name := range []string{"commands/README.md", "commands/pr.md", "manifest.json"} {
+		data, err := os.ReadFile(filepath.Join("testdata", "legacy", strings.ReplaceAll(name, "/", "_")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		before[name] = data
+	}
 	if err := Write(dir, before, true); err == nil {
 		t.Fatal("check accepted missing directory")
 	}
@@ -27,19 +30,26 @@ func TestWriteCheckAndOwnedRemoval(t *testing.T) {
 		}
 	}
 	after := generated(t, fixture())
-	if err := Write(dir, after, true); err == nil || !strings.Contains(err.Error(), "unexpected: commands/extra.md") {
+	if err := Write(dir, after, true); err == nil || !strings.Contains(err.Error(), "unexpected: commands/pr.md") {
 		t.Fatalf("check: %v", err)
+	}
+	// Checking a legacy bundle must leave every file untouched.
+	for name, want := range before {
+		got, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil || string(got) != string(want) {
+			t.Fatalf("check modified %s: %v", name, err)
+		}
 	}
 	if err := Write(dir, after, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "commands/extra.md")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(dir, "commands/pr.md")); !os.IsNotExist(err) {
 		t.Fatal("obsolete generated page remains")
 	}
-	if err := os.WriteFile(filepath.Join(dir, "commands/pr.md"), []byte("edited"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "commands/README.md"), []byte("edited"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Write(dir, after, true); err == nil || !strings.Contains(err.Error(), "changed: commands/pr.md") {
+	if err := Write(dir, after, true); err == nil || !strings.Contains(err.Error(), "changed: commands/README.md") {
 		t.Fatalf("check: %v", err)
 	}
 	if err := Write(dir, after, false); err != nil {
@@ -57,7 +67,7 @@ func TestRefuseUnownedAndUnsafeOutput(t *testing.T) {
 			if err := Write(dir, bundle, false); err != nil {
 				t.Fatal(err)
 			}
-			keep := filepath.Join(dir, "commands/pr.md")
+			keep := filepath.Join(dir, "commands/README.md")
 			original, err := os.ReadFile(keep)
 			if err != nil {
 				t.Fatal(err)
@@ -142,11 +152,11 @@ func TestNewBundleIntegrity(t *testing.T) {
 			bundle := generated(t, fixture())
 			switch kind {
 			case "hash":
-				bundle["commands/pr.md"] = []byte("changed")
+				bundle["commands/README.md"] = []byte("changed")
 			case "unowned path":
 				bundle["../outside.md"] = []byte("no")
 			case "missing page":
-				delete(bundle, "commands/pr.md")
+				delete(bundle, "commands/README.md")
 			case "missing anchor":
 				var m Manifest
 				if err := json.Unmarshal(bundle["manifest.json"], &m); err != nil {

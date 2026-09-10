@@ -28,8 +28,8 @@ func TestDocumentationCoversRealTree(t *testing.T) {
 	if err := json.Unmarshal(bundle["manifest.json"], &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if len(manifest.Pages) != 15 {
-		t.Fatalf("want index + 14 group pages; got %d", len(manifest.Pages))
+	if len(manifest.Pages) != 1 {
+		t.Fatalf("want one command reference page; got %d", len(manifest.Pages))
 	}
 	items := map[string]docgen.Command{}
 	for _, item := range manifest.Commands {
@@ -77,8 +77,8 @@ func TestDocumentationCoversRealTree(t *testing.T) {
 	if !foundDatabaseEnv {
 		t.Fatal("canonical DH_DB environment variable is missing from generated documentation")
 	}
-	if strings.Contains(string(bundle["commands/pr.md"]), "title: \"dh pr create\"") {
-		t.Fatal("leaf page accidentally generated")
+	if len(bundle) != 2 {
+		t.Fatal("unexpected generated file")
 	}
 }
 func TestHiddenGenerateCommand(t *testing.T) {

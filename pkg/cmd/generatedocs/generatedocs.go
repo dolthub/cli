@@ -17,7 +17,7 @@ func NewCmdGenerateDocs(f *cmdutil.Factory, newRoot func() *cobra.Command) *cobr
 	cmd := &cobra.Command{
 		Use: "generate-docs --output DIRECTORY", Hidden: true,
 		Short: "Export the command reference for documentation maintainers",
-		Long:  "Export a grouped Markdown reference and manifest without authentication or network access.\nUse an empty directory or an existing generated bundle. --check compares without writing.",
+		Long:  "Export a single-page Markdown reference and manifest without authentication or network access.\nUse an empty directory or an existing generated bundle. --check compares without writing.",
 		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if strings.TrimSpace(output) == "" {
