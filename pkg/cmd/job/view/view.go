@@ -41,21 +41,21 @@ func NewCmdView(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	}
 	cmd := &cobra.Command{
 		Use:   "view ID",
-		Short: "View an asynchronous operation",
+		Short: "View an asynchronous job",
 		Args:  cmdutil.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ID = args[0]
 			if strings.TrimSpace(opts.ID) == "" {
-				return cmdutil.FlagErrorf("operation ID must not be empty")
+				return cmdutil.FlagErrorf("job ID must not be empty")
 			}
 			return runF(cmd.Context(), opts)
 		},
 	}
 	cmdutil.AddJSONFlags(cmd, &opts.Exporter, JSONFields)
-	return cmdutil.WithDocs(cmd, "dh operation view OPERATION_ID", cmdutil.DocMetadata{
-		Arguments:   []cmdutil.DocArgument{{Name: "ID", Description: "Operation ID returned by an asynchronous command; resolved on the configured host.", Optional: false}},
+	return cmdutil.WithDocs(cmd, "dh job view JOB_ID", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "ID", Description: "Job ID returned by an asynchronous command; resolved on the configured host.", Optional: false}},
 		Constraints: []string{"Authentication is required. Uses DH_HOST or saved/default host configuration, not a database selector."},
-		Output:      "Prints current operation details or selected JSON fields. This is a snapshot; use dh operation watch to wait for completion.",
+		Output:      "Prints current job details or selected JSON fields. This is a snapshot; use dh job watch to wait for completion.",
 	})
 }
 

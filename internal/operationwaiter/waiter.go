@@ -36,7 +36,7 @@ type FailedError struct{ Operation dolthub.Operation }
 
 func (e *FailedError) Error() string {
 	if e.Operation.Error == nil {
-		return fmt.Sprintf("operation %s failed", e.Operation.ID)
+		return fmt.Sprintf("job %s failed", e.Operation.ID)
 	}
 	message := e.Operation.Error.Title
 	if e.Operation.Error.Detail != "" {
@@ -50,20 +50,20 @@ func (e *FailedError) Error() string {
 
 func (w Waiter) Wait(ctx context.Context, ref dolthub.OperationRef) (dolthub.Operation, error) {
 	if w.Client == nil {
-		return dolthub.Operation{}, errors.New("operation client is required")
+		return dolthub.Operation{}, errors.New("job client is required")
 	}
 	if ref.Href == "" {
-		return dolthub.Operation{}, errors.New("operation reference href is required")
+		return dolthub.Operation{}, errors.New("job reference href is required")
 	}
 	return w.wait(ctx, func(ctx context.Context) (dolthub.Operation, error) { return w.Client.GetOperationURL(ctx, ref.Href) })
 }
 
 func (w Waiter) WaitID(ctx context.Context, id string) (dolthub.Operation, error) {
 	if w.Client == nil {
-		return dolthub.Operation{}, errors.New("operation client is required")
+		return dolthub.Operation{}, errors.New("job client is required")
 	}
 	if id == "" {
-		return dolthub.Operation{}, errors.New("operation ID is required")
+		return dolthub.Operation{}, errors.New("job ID is required")
 	}
 	return w.wait(ctx, func(ctx context.Context) (dolthub.Operation, error) { return w.Client.GetOperation(ctx, id) })
 }
@@ -103,7 +103,7 @@ func (w Waiter) wait(ctx context.Context, fetch Fetch) (dolthub.Operation, error
 			return operation, &FailedError{Operation: operation}
 		case dolthub.OperationQueued, dolthub.OperationRunning:
 		default:
-			return operation, fmt.Errorf("operation %s has unknown status %q", operation.ID, operation.Status)
+			return operation, fmt.Errorf("job %s has unknown status %q", operation.ID, operation.Status)
 		}
 		delay := time.Duration(float64(interval) * (0.8 + 0.4*random()))
 		if delay > maximum {

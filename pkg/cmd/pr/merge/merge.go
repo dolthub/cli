@@ -7,8 +7,8 @@ import (
 	"github.com/dolthub/cli/internal/operationwaiter"
 	"github.com/dolthub/cli/internal/repository"
 	"github.com/dolthub/cli/internal/tableprinter"
-	"github.com/dolthub/cli/pkg/cmd/operation/progress"
-	viewcmd "github.com/dolthub/cli/pkg/cmd/operation/view"
+	"github.com/dolthub/cli/pkg/cmd/job/progress"
+	viewcmd "github.com/dolthub/cli/pkg/cmd/job/view"
 	"github.com/dolthub/cli/pkg/cmd/pr/shared"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
@@ -55,7 +55,7 @@ func NewCmdMerge(f *cmdutil.Factory, runF func(context.Context, *Options) error)
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
 	return cmdutil.WithDocs(c, "dh pr merge 1 --db OWNER/people", cmdutil.DocMetadata{
 		Arguments: []cmdutil.DocArgument{{Name: "NUMBER", Description: "Positive pull request number in the selected database.", Optional: false}},
-		Output:    "Waits for completion and prints operation details by default. Progress goes to stderr. --json selects operation fields. With --no-wait, prints the accepted ID and HREF instead; use --json id,href for structured acceptance. Acceptance is not completion. A failed operation returns a nonzero exit status. Interrupting the local wait does not cancel the remote operation.",
+		Output:    "Waits for completion and prints job details by default. Progress goes to stderr. --json selects job fields. With --no-wait, prints the accepted ID and HREF instead; use --json id,href for structured acceptance. Acceptance is not completion. A failed job returns a nonzero exit status. Interrupting the local wait does not cancel the remote job.",
 	})
 }
 func mergeRun(ctx context.Context, o *Options) error {

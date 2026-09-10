@@ -12,8 +12,8 @@ import (
 	"github.com/dolthub/cli/internal/repository"
 	"github.com/dolthub/cli/internal/tableprinter"
 	"github.com/dolthub/cli/internal/upload"
-	"github.com/dolthub/cli/pkg/cmd/operation/progress"
-	viewcmd "github.com/dolthub/cli/pkg/cmd/operation/view"
+	"github.com/dolthub/cli/pkg/cmd/job/progress"
+	viewcmd "github.com/dolthub/cli/pkg/cmd/job/view"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -68,7 +68,7 @@ func NewCmdImport(f *cmdutil.Factory, runF func(context.Context, *Options) error
 	return cmdutil.WithDocs(c, "dh table import people people.csv --db OWNER/people --branch main --primary-key id\ndh table import people changes.json --db OWNER/people --branch main --update", cmdutil.DocMetadata{
 		Arguments:   []cmdutil.DocArgument{{Name: "table", Description: "Destination table name.", Optional: false}, {Name: "file", Description: "Regular, nonempty local CSV, PSV, XLSX, or JSON file, up to 1 GiB; stdin is not supported.", Optional: false}},
 		Constraints: []string{"--branch is required. Default mode creates a table. --overwrite, --update, and --replace target an existing table and are mutually exclusive. JSON requires --update or --replace.", "File format comes from the extension unless --file-type is given. Primary keys may be comma-separated or repeated; empty primary-key names are rejected.", "Keep the file unchanged during upload. Storage URLs expire after ten minutes; failed uploads must restart, with no resume or URL refresh. Ctrl+C does not abort the storage session or cancel a submitted import."},
-		Output:      "Waits for completion and prints operation details by default. Progress goes to stderr. --json selects operation fields. With --no-wait, prints the accepted ID and HREF instead; use --json id,href for structured acceptance. Acceptance is not completion. A failed operation returns a nonzero exit status. Interrupting the local wait does not cancel the remote operation. --no-wait still waits for the entire upload. On an ambiguous submission error, check dh operation list before retrying.",
+		Output:      "Waits for completion and prints job details by default. Progress goes to stderr. --json selects job fields. With --no-wait, prints the accepted ID and HREF instead; use --json id,href for structured acceptance. Acceptance is not completion. A failed job returns a nonzero exit status. Interrupting the local wait does not cancel the remote job. --no-wait still waits for the entire upload. On an ambiguous submission error, check dh job list before retrying.",
 	})
 }
 
@@ -177,7 +177,7 @@ func importRun(ctx context.Context, o *Options) error {
 	}
 	ref, err := c.CreateImport(ctx, r.Owner, r.Name, request)
 	if err != nil {
-		return fmt.Errorf("submit import (check dh operation list before retrying): %w", err)
+		return fmt.Errorf("submit import (check dh job list before retrying): %w", err)
 	}
 	if o.NoWait {
 		if o.Exporter != nil {

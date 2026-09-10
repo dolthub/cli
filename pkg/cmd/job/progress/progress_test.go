@@ -16,7 +16,7 @@ func TestTTYReporterRewritesStatus(t *testing.T) {
 	r.Observe(dolthub.Operation{ID: "job/1", Status: dolthub.OperationRunning})
 	r.Done()
 	got := errOut.String()
-	if !strings.Contains(got, "Waiting for operation pending...") || !strings.Contains(got, "\r\x1b[2KWaiting for operation job/1: queued") || !strings.Contains(got, "\r\x1b[2KWaiting for operation job/1: running\n") {
+	if !strings.Contains(got, "Waiting for job pending...") || !strings.Contains(got, "\r\x1b[2KWaiting for job job/1: queued") || !strings.Contains(got, "\r\x1b[2KWaiting for job job/1: running\n") {
 		t.Fatalf("output=%q", got)
 	}
 }
@@ -26,7 +26,7 @@ func TestNonTTYReporterPrintsOnePlainLine(t *testing.T) {
 	r.Start()
 	r.Observe(dolthub.Operation{ID: "job/1", Status: dolthub.OperationRunning})
 	r.Done()
-	if got := errOut.String(); got != "Waiting for operation job/1...\n" {
+	if got := errOut.String(); got != "Waiting for job job/1...\n" {
 		t.Fatalf("output=%q", got)
 	}
 }

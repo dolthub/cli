@@ -23,10 +23,10 @@ func (r *Reporter) Start() {
 	}
 	r.started = true
 	if r.streams.IsStderrTTY() {
-		_, _ = fmt.Fprintf(r.streams.ErrOut, "Waiting for operation %s...", r.id)
+		_, _ = fmt.Fprintf(r.streams.ErrOut, "Waiting for job %s...", r.id)
 		return
 	}
-	_, _ = fmt.Fprintf(r.streams.ErrOut, "Waiting for operation %s...\n", r.id)
+	_, _ = fmt.Fprintf(r.streams.ErrOut, "Waiting for job %s...\n", r.id)
 }
 
 func (r *Reporter) Observe(operation dolthub.Operation) {
@@ -37,7 +37,7 @@ func (r *Reporter) Observe(operation dolthub.Operation) {
 	if id == "" {
 		id = r.id
 	}
-	_, _ = fmt.Fprintf(r.streams.ErrOut, "\r\x1b[2KWaiting for operation %s: %s", id, operation.Status)
+	_, _ = fmt.Fprintf(r.streams.ErrOut, "\r\x1b[2KWaiting for job %s: %s", id, operation.Status)
 }
 
 func (r *Reporter) Done() {

@@ -8,8 +8,8 @@ import (
 	"github.com/dolthub/cli/internal/credentials"
 	"github.com/dolthub/cli/internal/dolthub"
 	"github.com/dolthub/cli/internal/operationwaiter"
-	"github.com/dolthub/cli/pkg/cmd/operation/progress"
-	viewcmd "github.com/dolthub/cli/pkg/cmd/operation/view"
+	"github.com/dolthub/cli/pkg/cmd/job/progress"
+	viewcmd "github.com/dolthub/cli/pkg/cmd/job/view"
 	"github.com/dolthub/cli/pkg/cmdutil"
 	"github.com/dolthub/cli/pkg/iostreams"
 	"github.com/spf13/cobra"
@@ -37,10 +37,10 @@ func NewCmdWatch(f *cmdutil.Factory, runF func(context.Context, *Options) error)
 	if runF == nil {
 		runF = watchRun
 	}
-	c := &cobra.Command{Use: "watch ID", Short: "Watch an asynchronous operation", Args: cmdutil.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
+	c := &cobra.Command{Use: "watch ID", Short: "Watch an asynchronous job", Args: cmdutil.ExactArgs(1), RunE: func(c *cobra.Command, args []string) error {
 		o.ID = args[0]
 		if o.ID == "" {
-			return cmdutil.FlagErrorf("operation ID must not be empty")
+			return cmdutil.FlagErrorf("job ID must not be empty")
 		}
 		return runF(c.Context(), o)
 	}}
@@ -52,10 +52,10 @@ func NewCmdWatch(f *cmdutil.Factory, runF func(context.Context, *Options) error)
 	}
 	c.Flags().DurationVar(&o.Interval, "interval", operationwaiter.DefaultInterval, "Initial polling interval")
 	cmdutil.AddJSONFlags(c, &o.Exporter, viewcmd.JSONFields)
-	return cmdutil.WithDocs(c, "dh operation watch OPERATION_ID --json id,status,result", cmdutil.DocMetadata{
-		Arguments:   []cmdutil.DocArgument{{Name: "ID", Description: "Operation ID returned by an asynchronous command; resolved on the configured host.", Optional: false}},
+	return cmdutil.WithDocs(c, "dh job watch JOB_ID --json id,status,result", cmdutil.DocMetadata{
+		Arguments:   []cmdutil.DocArgument{{Name: "ID", Description: "Job ID returned by an asynchronous command; resolved on the configured host.", Optional: false}},
 		Constraints: []string{"Authentication is required. --interval must be positive; it sets the initial polling interval. Uses the configured host."},
-		Output:      "Polls until the operation finishes and prints its details or selected JSON fields. Progress goes to stderr; failed or canceled operations return a nonzero exit status. Stopping the local wait does not cancel remote work.",
+		Output:      "Polls until the job finishes and prints its details or selected JSON fields. Progress goes to stderr; failed or canceled jobs return a nonzero exit status. Stopping the local wait does not cancel remote work.",
 	})
 }
 func watchRun(ctx context.Context, o *Options) error {
