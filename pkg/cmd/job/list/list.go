@@ -67,11 +67,15 @@ func listRun(ctx context.Context, o *Options) error {
 		return e
 	}
 	if o.Exporter != nil {
-		return o.Exporter.Write(o.IO, items)
+		display := make([]dolthub.Operation, len(items))
+		for i, item := range items {
+			display[i] = item.ForDisplay()
+		}
+		return o.Exporter.Write(o.IO, display)
 	}
 	table := tableprinter.New(o.IO, "ID", "TYPE", "STATUS", "CREATED", "CANCELABLE")
 	for _, v := range items {
-		_ = table.AddRow(v.ID, string(v.Type), string(v.Status), v.CreatedAt.Format("2006-01-02T15:04:05Z07:00"), fmt.Sprint(v.Cancelable))
+		_ = table.AddRow(dolthub.ShortOperationID(v.ID), string(v.Type), string(v.Status), v.CreatedAt.Format("2006-01-02T15:04:05Z07:00"), fmt.Sprint(v.Cancelable))
 	}
 	return table.Render()
 }

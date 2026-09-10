@@ -65,3 +65,21 @@ func TestWaitRejectsUnknownStatusAndMissingInputs(t *testing.T) {
 		t.Fatal("empty href accepted")
 	}
 }
+
+func TestWaitErrorsDisplayUUIDAndPreserveRequestID(t *testing.T) {
+	const uuid = "716a6b3f-4bd4-432e-b7ae-87bead012a3f"
+	const full = "repositoryOwners/dolthub/repositories/people/jobs/" + uuid
+	for _, tc := range []struct {
+		status  dolthub.OperationStatus
+		message string
+	}{
+		{dolthub.OperationFailed, "job " + uuid + " failed"},
+		{"mystery", "job " + uuid + " has unknown status \"mystery\""},
+	} {
+		c := &fakeClient{operations: []dolthub.Operation{{ID: full, Status: tc.status}}}
+		op, err := (Waiter{Client: c}).WaitID(context.Background(), full)
+		if err == nil || err.Error() != tc.message || op.ID != full || c.ids[0] != full {
+			t.Fatalf("operation=%#v error=%v requests=%v", op, err, c.ids)
+		}
+	}
+}

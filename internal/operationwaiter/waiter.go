@@ -36,7 +36,7 @@ type FailedError struct{ Operation dolthub.Operation }
 
 func (e *FailedError) Error() string {
 	if e.Operation.Error == nil {
-		return fmt.Sprintf("job %s failed", e.Operation.ID)
+		return fmt.Sprintf("job %s failed", dolthub.ShortOperationID(e.Operation.ID))
 	}
 	message := e.Operation.Error.Title
 	if e.Operation.Error.Detail != "" {
@@ -103,7 +103,7 @@ func (w Waiter) wait(ctx context.Context, fetch Fetch) (dolthub.Operation, error
 			return operation, &FailedError{Operation: operation}
 		case dolthub.OperationQueued, dolthub.OperationRunning:
 		default:
-			return operation, fmt.Errorf("job %s has unknown status %q", operation.ID, operation.Status)
+			return operation, fmt.Errorf("job %s has unknown status %q", dolthub.ShortOperationID(operation.ID), operation.Status)
 		}
 		delay := time.Duration(float64(interval) * (0.8 + 0.4*random()))
 		if delay > maximum {

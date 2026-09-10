@@ -40,12 +40,12 @@ func authenticatedOptions(t *testing.T, operation dolthub.Operation) (*Options, 
 }
 
 func TestViewFailedJobSucceedsAndRendersError(t *testing.T) {
-	op := dolthub.Operation{ID: "id", Type: dolthub.OperationFork, Status: dolthub.OperationFailed, CreatedAt: time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC), Error: &dolthub.OperationError{Code: "FAILED", Title: "Failed"}}
+	op := dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationFork, Status: dolthub.OperationFailed, CreatedAt: time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC), Error: &dolthub.OperationError{Code: "FAILED", Title: "Failed"}}
 	opts, client, out := authenticatedOptions(t, op)
 	if err := viewRun(context.Background(), opts); err != nil {
 		t.Fatal(err)
 	}
-	if client.id != opts.ID || !strings.Contains(out.String(), "failed") || !strings.Contains(out.String(), "FAILED") {
+	if client.id != opts.ID || !strings.Contains(out.String(), "ID\t716a6b3f-4bd4-432e-b7ae-87bead012a3f\n") || !strings.Contains(out.String(), "failed") || !strings.Contains(out.String(), "FAILED") {
 		t.Fatalf("ID = %q, output = %q", client.id, out.String())
 	}
 }
@@ -75,7 +75,7 @@ func TestViewAcceptsStoredAuthentication(t *testing.T) {
 }
 
 func TestViewStructuredDynamicResult(t *testing.T) {
-	opts, _, out := authenticatedOptions(t, dolthub.Operation{ID: "id", Result: []byte(`{"database":{"owner":"o"}}`)})
+	opts, _, out := authenticatedOptions(t, dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Result: []byte(`{"database":{"owner":"o"}}`)})
 	cmd := NewCmdView(&cmdutil.Factory{}, func(_ context.Context, parsed *Options) error {
 		parsed.IO, parsed.Config, parsed.LookupEnv, parsed.client = opts.IO, opts.Config, opts.LookupEnv, opts.client
 		return viewRun(context.Background(), parsed)
@@ -84,7 +84,7 @@ func TestViewStructuredDynamicResult(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), `"result":{"database":{"owner":"o"}}`) {
+	if !strings.Contains(out.String(), `"id":"716a6b3f-4bd4-432e-b7ae-87bead012a3f"`) || !strings.Contains(out.String(), `"result":{"database":{"owner":"o"}}`) {
 		t.Fatalf("output = %q", out.String())
 	}
 }

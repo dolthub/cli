@@ -68,6 +68,7 @@ func watchRun(ctx context.Context, o *Options) error {
 		return err
 	}
 	wait := o.wait
+	var reporter *progress.Reporter
 	if wait == nil {
 		c := o.client
 		if c == nil {
@@ -76,16 +77,19 @@ func watchRun(ctx context.Context, o *Options) error {
 				return err
 			}
 		}
-		reporter := progress.New(o.IO, o.ID)
+		reporter = progress.New(o.IO, o.ID)
 		reporter.Start()
-		defer reporter.Done()
 		w := operationwaiter.Waiter{Client: c, Interval: o.Interval, Observe: reporter.Observe}
 		wait = w.WaitID
 	}
 	operation, waitErr := wait(ctx, o.ID)
+	reporter.Done()
+	if waitErr != nil && operation.ID == "" {
+		return waitErr
+	}
 	var renderErr error
 	if o.Exporter != nil {
-		renderErr = o.Exporter.Write(o.IO, operation)
+		renderErr = o.Exporter.Write(o.IO, operation.ForDisplay())
 	} else {
 		renderErr = viewcmd.RenderHuman(o.IO, operation)
 	}

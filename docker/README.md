@@ -31,7 +31,7 @@ binary for local remote discovery. Add `-i` when piping SQL to stdin:
 
 ```sh
 printf 'select 1;\n' | docker run --rm -i -e DH_TOKEN dolthub/cli:latest \
-  sql --db OWNER/DATABASE --ref main
+  sql --db OWNER/DATABASE --branch main
 ```
 
 Mount files read-only for `--file` input:
@@ -39,7 +39,7 @@ Mount files read-only for `--file` input:
 ```sh
 docker run --rm -e DH_TOKEN \
   --mount "type=bind,src=$PWD,dst=/work,readonly" \
-  dolthub/cli:latest sql --db OWNER/DATABASE --ref main --file /work/query.sql
+  dolthub/cli:latest sql --db OWNER/DATABASE --branch main --file /work/query.sql
 ```
 
 The image runs as UID/GID 1001 with a writable home at `/home/dh`. Mounted files

@@ -12,21 +12,21 @@ func TestTTYReporterRewritesStatus(t *testing.T) {
 	io.SetStderrTTY(true)
 	r := New(io, "pending")
 	r.Start()
-	r.Observe(dolthub.Operation{ID: "job/1", Status: dolthub.OperationQueued})
-	r.Observe(dolthub.Operation{ID: "job/1", Status: dolthub.OperationRunning})
+	r.Observe(dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationQueued})
+	r.Observe(dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationRunning})
 	r.Done()
 	got := errOut.String()
-	if !strings.Contains(got, "Waiting for job pending...") || !strings.Contains(got, "\r\x1b[2KWaiting for job job/1: queued") || !strings.Contains(got, "\r\x1b[2KWaiting for job job/1: running\n") {
+	if !strings.Contains(got, "Waiting for job pending...") || !strings.Contains(got, "\r\x1b[2KWaiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: queued") || !strings.Contains(got, "\r\x1b[2KWaiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: running\n") {
 		t.Fatalf("output=%q", got)
 	}
 }
 func TestNonTTYReporterPrintsOnePlainLine(t *testing.T) {
 	io, _, _, errOut := iostreams.NewTest()
-	r := New(io, "job/1")
+	r := New(io, "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f")
 	r.Start()
-	r.Observe(dolthub.Operation{ID: "job/1", Status: dolthub.OperationRunning})
+	r.Observe(dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationRunning})
 	r.Done()
-	if got := errOut.String(); got != "Waiting for job job/1...\n" {
+	if got := errOut.String(); got != "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f...\n" {
 		t.Fatalf("output=%q", got)
 	}
 }

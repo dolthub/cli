@@ -25,7 +25,7 @@ func (f *fakeClient) CurrentUser(context.Context) (dolthub.User, error) {
 func (f *fakeClient) CreateFork(_ context.Context, _, _ string, r dolthub.CreateForkRequest) (dolthub.OperationRef, error) {
 	f.creates++
 	f.request = r
-	return dolthub.OperationRef{ID: "1", Href: "https://h/api/v2/operations/1"}, nil
+	return dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://h/api/v2/operations/1"}, nil
 }
 func (f *fakeClient) GetOperation(context.Context, string) (dolthub.Operation, error) {
 	return dolthub.Operation{}, nil
@@ -43,14 +43,14 @@ func TestForkNoWaitUsesCurrentUser(t *testing.T) {
 	if err := forkRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if c.users != 1 || c.request.Owner != "alice" || !strings.Contains(out.String(), "1\thttps://h") {
+	if c.users != 1 || c.request.Owner != "alice" || out.String() != "716a6b3f-4bd4-432e-b7ae-87bead012a3f\thttps://h/api/v2/operations/1\n" {
 		t.Fatalf("users=%d request=%#v output=%q", c.users, c.request, out.String())
 	}
 }
 func TestForkWaitFailureIsRendered(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
 	c := &fakeClient{}
-	failed := dolthub.Operation{ID: "1", Status: dolthub.OperationFailed}
+	failed := dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationFailed}
 	o := &Options{IO: io, ResolveRepository: resolve, Organization: "org", client: c, wait: func(context.Context, dolthub.OperationRef) (dolthub.Operation, error) {
 		return failed, &operationwaiter.FailedError{Operation: failed}
 	}}
@@ -63,12 +63,12 @@ func TestForkWaitFailureIsRendered(t *testing.T) {
 func TestForkReportsWaitStatusInTTY(t *testing.T) {
 	io, _, _, errOut := iostreams.NewTest()
 	io.SetStderrTTY(true)
-	c := &fakeClient{operation: dolthub.Operation{ID: "1", Status: dolthub.OperationSucceeded}}
+	c := &fakeClient{operation: dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationSucceeded}}
 	o := &Options{IO: io, ResolveRepository: resolve, Organization: "org", client: c}
 	if err := forkRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if got := errOut.String(); !strings.Contains(got, "Waiting for job 1: succeeded") {
+	if got := errOut.String(); !strings.Contains(got, "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: succeeded") {
 		t.Fatalf("stderr=%q", got)
 	}
 }

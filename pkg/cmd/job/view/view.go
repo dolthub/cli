@@ -80,7 +80,7 @@ func viewRun(ctx context.Context, opts *Options) error {
 		return err
 	}
 	if opts.Exporter != nil {
-		return opts.Exporter.Write(opts.IO, operation)
+		return opts.Exporter.Write(opts.IO, operation.ForDisplay())
 	}
 	return RenderHuman(opts.IO, operation)
 }
@@ -105,7 +105,7 @@ func RequireAuthentication(cfg config.Config, store credentials.Store, lookup fu
 func RenderHuman(streams *iostreams.IOStreams, operation dolthub.Operation) error {
 	table := tableprinter.New(streams, "FIELD", "VALUE")
 	rows := [][2]string{
-		{"ID", operation.ID},
+		{"ID", dolthub.ShortOperationID(operation.ID)},
 		{"Type", string(operation.Type)},
 		{"Status", string(operation.Status)},
 		{"Created", operation.CreatedAt.Format("2006-01-02T15:04:05Z07:00")},

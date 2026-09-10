@@ -19,7 +19,7 @@ type fakeClient struct {
 
 func (f *fakeClient) MergePull(_ context.Context, _, _ string, n int64) (dolthub.OperationRef, error) {
 	f.number = n
-	return dolthub.OperationRef{ID: "1", Href: "https://h/api/v2/operations/1"}, nil
+	return dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://h/api/v2/operations/1"}, nil
 }
 func (f *fakeClient) GetOperation(context.Context, string) (dolthub.Operation, error) {
 	return dolthub.Operation{}, nil
@@ -37,14 +37,14 @@ func TestMergeNoWait(t *testing.T) {
 	if err := mergeRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if c.number != 42 || !strings.Contains(out.String(), "1\thttps://h") {
+	if c.number != 42 || out.String() != "716a6b3f-4bd4-432e-b7ae-87bead012a3f\thttps://h/api/v2/operations/1\n" {
 		t.Fatalf("number=%d output=%q", c.number, out.String())
 	}
 }
 func TestMergeWaitFailure(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
 	c := &fakeClient{}
-	failed := dolthub.Operation{ID: "1", Status: dolthub.OperationFailed}
+	failed := dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationFailed}
 	o := &Options{IO: io, ResolveRepository: resolve, Number: 42, client: c, wait: func(context.Context, dolthub.OperationRef) (dolthub.Operation, error) {
 		return failed, &operationwaiter.FailedError{Operation: failed}
 	}}
@@ -57,12 +57,12 @@ func TestMergeWaitFailure(t *testing.T) {
 func TestMergeReportsWaitStatusInTTY(t *testing.T) {
 	io, _, _, errOut := iostreams.NewTest()
 	io.SetStderrTTY(true)
-	c := &fakeClient{operation: dolthub.Operation{ID: "1", Status: dolthub.OperationSucceeded}}
+	c := &fakeClient{operation: dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationSucceeded}}
 	o := &Options{IO: io, ResolveRepository: resolve, Number: 42, client: c}
 	if err := mergeRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if got := errOut.String(); !strings.Contains(got, "Waiting for job 1: succeeded") {
+	if got := errOut.String(); !strings.Contains(got, "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: succeeded") {
 		t.Fatalf("stderr=%q", got)
 	}
 }

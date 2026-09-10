@@ -21,6 +21,7 @@ type fakeClient struct {
 	readResult   dolthub.QueryResult
 	ref          dolthub.OperationRef
 	operation    dolthub.Operation
+	pollErr      error
 	reads        int
 	writes       int
 }
@@ -39,7 +40,7 @@ func (f *fakeClient) GetOperation(context.Context, string) (dolthub.Operation, e
 	return f.operation, nil
 }
 func (f *fakeClient) GetOperationURL(context.Context, string) (dolthub.Operation, error) {
-	return f.operation, nil
+	return f.operation, f.pollErr
 }
 
 func resolve(context.Context, string) (repository.Repository, error) {
@@ -97,20 +98,20 @@ func TestReadStatusAndMalformedRowsFail(t *testing.T) {
 
 func TestWriteDefaultsFromBranchAndNoWait(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
-	c := &fakeClient{ref: dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"}}
+	c := &fakeClient{ref: dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"}}
 	o := &Options{IO: io, ResolveRepository: resolve, Query: "insert into t values (1)", Write: true, Branch: "main", NoWait: true, client: c}
 	if err := sqlRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if c.writeRequest.FromBranch != "main" || c.writeRequest.ToBranch != "main" || !strings.Contains(out.String(), "job/1") {
+	if c.writeRequest.FromBranch != "main" || c.writeRequest.ToBranch != "main" || !strings.Contains(out.String(), "716a6b3f-4bd4-432e-b7ae-87bead012a3f\thttps://example.test/op/1") {
 		t.Fatalf("request = %#v, stdout = %q", c.writeRequest, out.String())
 	}
 }
 
 func TestWriteWaitFailureIsRendered(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
-	failed := dolthub.Operation{ID: "job/1", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationFailed}
-	c := &fakeClient{ref: dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"}}
+	failed := dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationFailed}
+	c := &fakeClient{ref: dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"}}
 	o := &Options{IO: io, ResolveRepository: resolve, Query: "delete from t", Write: true, Branch: "feature", FromBranch: "main", client: c, wait: func(context.Context, dolthub.OperationRef) (dolthub.Operation, error) {
 		return failed, &operationwaiter.FailedError{Operation: failed}
 	}}
@@ -125,14 +126,56 @@ func TestWriteReportsStatusInTTY(t *testing.T) {
 	io, _, _, errOut := iostreams.NewTest()
 	io.SetStderrTTY(true)
 	c := &fakeClient{
-		ref:       dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"},
-		operation: dolthub.Operation{ID: "job/1", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationSucceeded},
+		ref:       dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"},
+		operation: dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationSucceeded},
 	}
 	o := &Options{IO: io, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
 	if err := sqlRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if got := errOut.String(); !strings.Contains(got, "Waiting for job job/1: succeeded") {
+	if got := errOut.String(); !strings.Contains(got, "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: succeeded") {
+		t.Fatalf("stderr = %q", got)
+	}
+}
+
+func TestWriteFinishesProgressBeforeRendering(t *testing.T) {
+	for _, status := range []dolthub.OperationStatus{dolthub.OperationSucceeded, dolthub.OperationFailed} {
+		t.Run(string(status), func(t *testing.T) {
+			streams, _, output, _ := iostreams.NewTest()
+			streams.ErrOut = output
+			streams.SetStderrTTY(true)
+			c := &fakeClient{
+				ref:       dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"},
+				operation: dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationSQLWrite, Status: status},
+			}
+			o := &Options{IO: streams, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
+			err := sqlRun(context.Background(), o)
+			if (err != nil) != (status == dolthub.OperationFailed) {
+				t.Fatalf("error = %v", err)
+			}
+			if !strings.Contains(output.String(), "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: "+string(status)+"\nID\t716a6b3f-4bd4-432e-b7ae-87bead012a3f\n") {
+				t.Fatalf("combined output = %q", output.String())
+			}
+		})
+	}
+}
+
+func TestWritePollingErrorDoesNotRenderEmptyJob(t *testing.T) {
+	streams, _, output, errOutput := iostreams.NewTest()
+	streams.SetStderrTTY(true)
+	pollErr := &dolthub.APIError{Status: 404, Method: "GET", Path: "/api/v2/operations/job/1", Detail: "no such repository"}
+	c := &fakeClient{
+		ref:     dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"},
+		pollErr: pollErr,
+	}
+	o := &Options{IO: streams, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
+	if err := sqlRun(context.Background(), o); !errors.Is(err, pollErr) {
+		t.Fatalf("error = %v, want %v", err, pollErr)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("unexpected job output = %q", output.String())
+	}
+	if got := errOutput.String(); got != "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f...\n" {
 		t.Fatalf("stderr = %q", got)
 	}
 }
@@ -151,11 +194,11 @@ func TestCommandReadsFileAndConvertsOptions(t *testing.T) {
 		}
 		return sqlRun(ctx, o)
 	})
-	cmd.SetArgs([]string{"--file", "query.sql", "--ref", "main", "--limit", "7", "--timeout", "2500ms"})
+	cmd.SetArgs([]string{"--file", "query.sql", "--branch", "main", "--limit", "7", "--timeout", "2500ms"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if c.readRequest.Query != "select\n  1;" || c.readRequest.Limit != 7 || c.readRequest.TimeoutMS != 2500 {
+	if c.readRequest.Ref != "main" || c.readRequest.Query != "select\n  1;" || c.readRequest.Limit != 7 || c.readRequest.TimeoutMS != 2500 {
 		t.Fatalf("request = %#v", c.readRequest)
 	}
 }
@@ -165,13 +208,67 @@ func TestCommandStructuredRead(t *testing.T) {
 	c := &fakeClient{readResult: dolthub.QueryResult{Columns: []dolthub.QueryColumn{{Name: "a"}, {Name: "b"}}, Rows: [][]*string{{strptr("1"), nil}}, Status: dolthub.QuerySuccess}}
 	f := &cmdutil.Factory{IO: io, ResolveRepository: resolve}
 	cmd := NewCmdSQL(f, func(ctx context.Context, o *Options) error { o.client = c; return sqlRun(ctx, o) })
-	cmd.SetArgs([]string{"select 1", "--ref", "main", "--json", "rows,status"})
+	cmd.SetArgs([]string{"select 1", "--branch", "main", "--json", "rows,status"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	var got map[string]any
 	if err := json.Unmarshal(out.Bytes(), &got); err != nil || got["status"] != "success" {
 		t.Fatalf("output = %q, decoded = %#v, error = %v", out.String(), got, err)
+	}
+}
+
+func TestCommandSQLSelectors(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		args    []string
+		ref     string
+		write   bool
+		wantErr string
+	}{
+		{name: "read branch", args: []string{"--branch", "feature/people"}, ref: "feature/people"},
+		{name: "read ref branch", args: []string{"--ref", "main"}, ref: "main"},
+		{name: "read tag", args: []string{"--ref", "v1.0"}, ref: "v1.0"},
+		{name: "read commit", args: []string{"--ref", "0123456789abcdefghijklmnopqrstuv"}, ref: "0123456789abcdefghijklmnopqrstuv"},
+		{name: "write branch", args: []string{"--write", "--branch", "main", "--no-wait"}, ref: "main", write: true},
+		{name: "missing selector", wantErr: "--branch or --ref is required"},
+		{name: "empty branch", args: []string{"--branch", ""}, wantErr: "--branch or --ref is required"},
+		{name: "blank branch", args: []string{"--branch", " "}, wantErr: "--branch or --ref is required"},
+		{name: "empty ref", args: []string{"--ref", ""}, wantErr: "--branch or --ref is required"},
+		{name: "both selectors", args: []string{"--branch", "main", "--ref", "main"}, wantErr: "--branch and --ref are mutually exclusive"},
+		{name: "empty ref with branch", args: []string{"--branch", "main", "--ref", ""}, wantErr: "--branch and --ref are mutually exclusive"},
+		{name: "empty branch with ref", args: []string{"--branch", "", "--ref", "main"}, wantErr: "--branch and --ref are mutually exclusive"},
+		{name: "read from branch", args: []string{"--branch", "main", "--from-branch", "main"}, wantErr: "--from-branch and --no-wait require --write"},
+		{name: "read no wait", args: []string{"--branch", "main", "--no-wait"}, wantErr: "--from-branch and --no-wait require --write"},
+		{name: "write ref", args: []string{"--write", "--branch", "main", "--ref", "v1.0"}, wantErr: "--ref, --limit, and --timeout are read-only flags"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			streams, _, _, _ := iostreams.NewTest()
+			c := &fakeClient{readResult: dolthub.QueryResult{Status: dolthub.QuerySuccess}}
+			cmd := NewCmdSQL(&cmdutil.Factory{IO: streams, ResolveRepository: resolve}, func(ctx context.Context, o *Options) error {
+				o.client = c
+				return sqlRun(ctx, o)
+			})
+			cmd.SetArgs(append([]string{"select 1"}, tc.args...))
+			err := cmd.Execute()
+			if tc.wantErr != "" {
+				var flagErr *cmdutil.FlagError
+				if !errors.As(err, &flagErr) || !strings.Contains(err.Error(), tc.wantErr) || c.reads != 0 || c.writes != 0 {
+					t.Fatalf("error=%v reads=%d writes=%d", err, c.reads, c.writes)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.write {
+				if c.writes != 1 || c.reads != 0 || c.writeRequest.ToBranch != tc.ref || c.writeRequest.FromBranch != tc.ref {
+					t.Fatalf("write request=%#v reads=%d writes=%d", c.writeRequest, c.reads, c.writes)
+				}
+			} else if c.reads != 1 || c.writes != 0 || c.readRequest.Ref != tc.ref {
+				t.Fatalf("read request=%#v reads=%d writes=%d", c.readRequest, c.reads, c.writes)
+			}
+		})
 	}
 }
 
@@ -183,7 +280,7 @@ func TestCommandValidation(t *testing.T) {
 		{name: "missing query", args: []string{"--ref", "main"}},
 		{name: "missing ref", args: []string{"select 1"}},
 		{name: "write missing branch", args: []string{"--write", "insert"}},
-		{name: "read write flag", args: []string{"select 1", "--ref", "main", "--branch", "main"}},
+		{name: "conflicting selectors", args: []string{"select 1", "--ref", "main", "--branch", "main"}},
 		{name: "write read flag", args: []string{"--write", "insert", "--branch", "main", "--limit", "1"}},
 		{name: "bad limit", args: []string{"select 1", "--ref", "main", "--limit", "0"}},
 		{name: "sub millisecond", args: []string{"select 1", "--ref", "main", "--timeout", "1500us"}},

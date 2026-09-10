@@ -107,19 +107,6 @@ func (s *KeyringStore) Delete(host, user string) error {
 	return s.backend.Delete("dh", account(host, user))
 }
 
-// EnvironmentStore gives DH_TOKEN precedence without persisting or deleting it.
-type EnvironmentStore struct {
-	Store
-	LookupEnv func(string) (string, bool)
-}
-
-func (s EnvironmentStore) Get(host, user string) (string, error) {
-	if token, ok := s.LookupEnv("DH_TOKEN"); ok && token != "" {
-		return token, nil
-	}
-	return s.Store.Get(host, user)
-}
-
 // MemoryStore is an in-memory credential store for tests.
 type MemoryStore struct {
 	Values map[string]string
