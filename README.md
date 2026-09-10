@@ -52,10 +52,10 @@ You can also authenticate with `DH_TOKEN`. Unset it before using browser login.
 
 ## SQL
 
-Run a read query against a branch, tag, or commit:
+Run a read query against a branch:
 
 ```sh
-dh sql --db OWNER/DATABASE --ref main "select * from table_name limit 10"
+dh sql --db OWNER/DATABASE --branch main "select * from table_name limit 10"
 ```
 
 SQL can also come from a file or pipe. Use `--json columns,rows,status` for
@@ -71,6 +71,10 @@ dh sql --write --db OWNER/DATABASE --branch main \
 dh sql --write --db OWNER/DATABASE --branch feature/update \
   --from-branch main --file update.sql
 ```
+
+Use `--branch` for SQL reads and writes against a branch. For reads against a
+tag or commit, use `--ref` instead; reads also continue to accept branch names
+with `--ref`. Supply only one of `--branch` and `--ref`.
 
 Write commands wait for completion and display job status by default.
 Pass `--no-wait` to print the accepted job reference immediately.

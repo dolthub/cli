@@ -104,15 +104,15 @@ func NewCmdSQL(f *cmdutil.Factory, runF func(context.Context, *Options) error) *
 	c.Flags().IntVar(&o.Limit, "limit", 0, "Maximum rows to return")
 	c.Flags().DurationVar(&o.Timeout, "timeout", 0, "Server-side query timeout")
 	c.Flags().BoolVar(&o.Write, "write", false, "Run an asynchronous write query")
-	c.Flags().StringVar(&o.Branch, "branch", "", "Branch on which to run a write query")
+	c.Flags().StringVar(&o.Branch, "branch", "", "Branch on which to run a read or write query")
 	c.Flags().StringVar(&o.FromBranch, "from-branch", "", "Base branch for a write query (defaults to --branch)")
 	c.Flags().BoolVar(&o.NoWait, "no-wait", false, "Return after a write query is accepted")
 	cmdutil.AddJSONFlags(c, &o.Exporter, allJSONFields)
-	return cmdutil.WithDocs(c, "dh sql --db OWNER/people --ref main \"select * from people limit 10\"\ndh sql --write --db OWNER/people --branch feature/people --from-branch main --file update.sql", cmdutil.DocMetadata{
+	return cmdutil.WithDocs(c, "dh sql --db OWNER/people --branch main \"select * from people limit 10\"\ndh sql --write --db OWNER/people --branch feature/people --from-branch main --file update.sql", cmdutil.DocMetadata{
 		Arguments:   []cmdutil.DocArgument{{Name: "QUERY", Description: "SQL text. If omitted, use --file or pipe SQL through stdin.", Optional: true}},
 		Constraints: []string{"Provide only one SQL source: argument, --file, or stdin. --file - reads stdin. Empty queries are rejected.", "--jq and --template require --json. JSON fields must be valid for the selected read/write mode."},
 		Output:      "Reads print rows to stdout and warnings to stderr, or selected JSON fields. Unsuccessful query status returns a nonzero exit code. Writes wait for a job and print its details; --no-wait prints ID/HREF after acceptance. For acceptance JSON use --json id,href.",
-		Modes:       []cmdutil.DocMode{{Name: "Read queries", Description: "Requires --ref with a branch, tag, or commit. --limit must be positive when supplied; --timeout must be between 1ms and 60s in whole milliseconds. --branch, --from-branch, and --no-wait require write mode.", JSONFields: readJSONFields}, {Name: "Write queries", Description: "Requires --write and --branch. --from-branch defaults to --branch and supplies the source branch. --ref, --limit, and --timeout are read-only flags. Acceptance does not imply successful completion; watch the returned job ID.", JSONFields: writeJSONFields}},
+		Modes:       []cmdutil.DocMode{{Name: "Read queries", Description: "Requires --branch with a branch, or --ref with a branch, tag, or commit. --branch and --ref are mutually exclusive. --limit must be positive when supplied; --timeout must be between 1ms and 60s in whole milliseconds. --from-branch and --no-wait require write mode.", JSONFields: readJSONFields}, {Name: "Write queries", Description: "Requires --write and --branch. --from-branch defaults to --branch and supplies the source branch. --ref, --limit, and --timeout are read-only flags. Acceptance does not imply successful completion; watch the returned job ID.", JSONFields: writeJSONFields}},
 	})
 }
 
@@ -151,11 +151,14 @@ func validateMode(o *Options) error {
 		}
 		return validateJSONFields(o.Exporter, writeJSONFields, "write")
 	}
-	if strings.TrimSpace(o.Ref) == "" {
-		return cmdutil.FlagErrorf("--ref is required for read queries")
+	if (o.RefSet || o.Ref != "") && (o.BranchSet || o.Branch != "") {
+		return cmdutil.FlagErrorf("--branch and --ref are mutually exclusive")
 	}
-	if o.BranchSet || o.FromBranchSet || o.NoWaitSet {
-		return cmdutil.FlagErrorf("--branch, --from-branch, and --no-wait require --write")
+	if strings.TrimSpace(o.Ref) == "" && strings.TrimSpace(o.Branch) == "" {
+		return cmdutil.FlagErrorf("--branch or --ref is required for read queries")
+	}
+	if o.FromBranchSet || o.NoWaitSet {
+		return cmdutil.FlagErrorf("--from-branch and --no-wait require --write")
 	}
 	if o.LimitSet && o.Limit <= 0 {
 		return cmdutil.FlagErrorf("--limit must be greater than zero")
@@ -215,7 +218,11 @@ func readQuery(o *Options) (string, error) {
 }
 
 func runRead(ctx context.Context, o *Options, c apiClient, r repository.Repository, query string) error {
-	request := dolthub.SQLReadRequest{Ref: o.Ref, Query: query}
+	ref := o.Ref
+	if o.Branch != "" {
+		ref = o.Branch
+	}
+	request := dolthub.SQLReadRequest{Ref: ref, Query: query}
 	if o.LimitSet {
 		request.Limit = o.Limit
 	}
