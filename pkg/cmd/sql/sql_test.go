@@ -21,6 +21,7 @@ type fakeClient struct {
 	readResult   dolthub.QueryResult
 	ref          dolthub.OperationRef
 	operation    dolthub.Operation
+	pollErr      error
 	reads        int
 	writes       int
 }
@@ -39,7 +40,7 @@ func (f *fakeClient) GetOperation(context.Context, string) (dolthub.Operation, e
 	return f.operation, nil
 }
 func (f *fakeClient) GetOperationURL(context.Context, string) (dolthub.Operation, error) {
-	return f.operation, nil
+	return f.operation, f.pollErr
 }
 
 func resolve(context.Context, string) (repository.Repository, error) {
@@ -133,6 +134,48 @@ func TestWriteReportsStatusInTTY(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := errOut.String(); !strings.Contains(got, "Waiting for job job/1: succeeded") {
+		t.Fatalf("stderr = %q", got)
+	}
+}
+
+func TestWriteFinishesProgressBeforeRendering(t *testing.T) {
+	for _, status := range []dolthub.OperationStatus{dolthub.OperationSucceeded, dolthub.OperationFailed} {
+		t.Run(string(status), func(t *testing.T) {
+			streams, _, output, _ := iostreams.NewTest()
+			streams.ErrOut = output
+			streams.SetStderrTTY(true)
+			c := &fakeClient{
+				ref:       dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"},
+				operation: dolthub.Operation{ID: "job/1", Type: dolthub.OperationSQLWrite, Status: status},
+			}
+			o := &Options{IO: streams, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
+			err := sqlRun(context.Background(), o)
+			if (err != nil) != (status == dolthub.OperationFailed) {
+				t.Fatalf("error = %v", err)
+			}
+			if !strings.Contains(output.String(), "Waiting for job job/1: "+string(status)+"\nID\tjob/1\n") {
+				t.Fatalf("combined output = %q", output.String())
+			}
+		})
+	}
+}
+
+func TestWritePollingErrorDoesNotRenderEmptyJob(t *testing.T) {
+	streams, _, output, errOutput := iostreams.NewTest()
+	streams.SetStderrTTY(true)
+	pollErr := &dolthub.APIError{Status: 404, Method: "GET", Path: "/api/v2/operations/job/1", Detail: "no such repository"}
+	c := &fakeClient{
+		ref:     dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"},
+		pollErr: pollErr,
+	}
+	o := &Options{IO: streams, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
+	if err := sqlRun(context.Background(), o); !errors.Is(err, pollErr) {
+		t.Fatalf("error = %v, want %v", err, pollErr)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("unexpected job output = %q", output.String())
+	}
+	if got := errOutput.String(); got != "Waiting for job job/1...\n" {
 		t.Fatalf("stderr = %q", got)
 	}
 }

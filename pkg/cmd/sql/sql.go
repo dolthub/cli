@@ -311,13 +311,17 @@ func runWrite(ctx context.Context, o *Options, c apiClient, r repository.Reposit
 		return table.Render()
 	}
 	wait := o.wait
+	var reporter *progress.Reporter
 	if wait == nil {
-		reporter := progress.New(o.IO, ref.ID)
+		reporter = progress.New(o.IO, ref.ID)
 		reporter.Start()
-		defer reporter.Done()
 		wait = operationwaiter.Waiter{Client: c, Observe: reporter.Observe}.Wait
 	}
 	operation, waitErr := wait(ctx, ref)
+	reporter.Done()
+	if waitErr != nil && operation.ID == "" {
+		return waitErr
+	}
 	var renderErr error
 	if o.Exporter != nil {
 		renderErr = o.Exporter.Write(o.IO, operation)
