@@ -132,7 +132,7 @@ func TestWriteReportsStatusInTTY(t *testing.T) {
 	if err := sqlRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if got := errOut.String(); !strings.Contains(got, "Waiting for operation job/1: succeeded") {
+	if got := errOut.String(); !strings.Contains(got, "Waiting for job job/1: succeeded") {
 		t.Fatalf("stderr = %q", got)
 	}
 }

@@ -23,6 +23,12 @@ func TestNewCmdRootDoesNotRequireExternalState(t *testing.T) {
 	if sql, _, err := cmd.Find([]string{"sql"}); err != nil || sql.Name() != "sql" {
 		t.Fatalf("sql command not found: %v", err)
 	}
+	if job, _, err := cmd.Find([]string{"job"}); err != nil || job.Name() != "job" {
+		t.Fatalf("job command not found: %v", err)
+	}
+	if _, _, err := cmd.Find([]string{"operation"}); err == nil {
+		t.Fatal("legacy operation command unexpectedly found")
+	}
 	if tableImport, _, err := cmd.Find([]string{"table", "import"}); err != nil || tableImport.Name() != "import" {
 		t.Fatalf("table import command not found: %v", err)
 	}

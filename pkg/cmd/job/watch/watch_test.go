@@ -18,7 +18,7 @@ func authenticatedConfig() config.Config {
 	c.Users[config.DefaultHost] = "alice"
 	return c
 }
-func TestWatchRendersFailedOperationAndReturnsFailure(t *testing.T) {
+func TestWatchRendersFailedJobAndReturnsFailure(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
 	failed := &operationwaiter.FailedError{Operation: dolthub.Operation{ID: "1", Status: dolthub.OperationFailed, Error: &dolthub.OperationError{Title: "bad"}}}
 	o := &Options{IO: io, Config: func() (config.Config, error) { return authenticatedConfig(), nil }, LookupEnv: func(k string) (string, bool) { return "token", k == "DH_TOKEN" }, ID: "1", wait: func(context.Context, string) (dolthub.Operation, error) { return failed.Operation, failed }}

@@ -72,8 +72,8 @@ dh sql --write --db OWNER/DATABASE --branch feature/update \
   --from-branch main --file update.sql
 ```
 
-Write commands wait for completion and display operation status by default.
-Pass `--no-wait` to print the accepted operation reference immediately.
+Write commands wait for completion and display job status by default.
+Pass `--no-wait` to print the accepted job reference immediately.
 
 ## Table imports
 
@@ -98,12 +98,12 @@ Files must be regular, nonempty files of at most 1 GiB; stdin is not supported.
 Keep the file unchanged during upload.
 
 Uploads use multipart storage URLs and wait for import completion by default.
-`--no-wait` returns the operation reference after uploading and submitting the
+`--no-wait` returns the job reference after uploading and submitting the
 import. Use `--json id,status,result` for structured completion output, or
-`--no-wait --json id,href` for the accepted operation reference.
+`--no-wait --json id,href` for the accepted job reference.
 
 Storage URLs expire after 10 minutes. Failed or expired uploads must be
 restarted; this version does not refresh URLs or resume uploads. Ctrl+C stops
 local transfers but does not abort the storage session or cancel an already
-submitted import. After a submission error, check `dh operation list --db
+submitted import. After a submission error, check `dh job list --db
 OWNER/DATABASE` before retrying, since the import may already have been accepted.

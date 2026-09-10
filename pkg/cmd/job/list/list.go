@@ -32,7 +32,7 @@ func NewCmdList(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 	if runF == nil {
 		runF = listRun
 	}
-	c := &cobra.Command{Use: "list", Short: "List database operations", Args: cmdutil.NoArgs, RunE: func(c *cobra.Command, _ []string) error { return runF(c.Context(), o) }}
+	c := &cobra.Command{Use: "list", Short: "List database jobs", Args: cmdutil.NoArgs, RunE: func(c *cobra.Command, _ []string) error { return runF(c.Context(), o) }}
 	c.PreRunE = func(*cobra.Command, []string) error {
 		if o.Limit < 1 {
 			return cmdutil.FlagErrorf("--limit must be greater than zero")
@@ -40,11 +40,11 @@ func NewCmdList(f *cmdutil.Factory, runF func(context.Context, *Options) error) 
 		return nil
 	}
 	cmdutil.AddDatabaseFlag(c, &o.Repository)
-	c.Flags().IntVar(&o.Limit, "limit", 30, "Maximum number of operations")
+	c.Flags().IntVar(&o.Limit, "limit", 30, "Maximum number of jobs")
 	cmdutil.AddJSONFlags(c, &o.Exporter, jsonFields)
-	return cmdutil.WithDocs(c, "dh operation list --db OWNER/people", cmdutil.DocMetadata{
+	return cmdutil.WithDocs(c, "dh job list --db OWNER/people", cmdutil.DocMetadata{
 		Constraints: []string{"--limit must be positive."},
-		Output:      "Prints operations for the selected database, or a JSON array of selected fields, fetching pages up to --limit.",
+		Output:      "Prints jobs for the selected database, or a JSON array of selected fields, fetching pages up to --limit.",
 	})
 }
 func listRun(ctx context.Context, o *Options) error {

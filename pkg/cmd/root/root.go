@@ -9,7 +9,7 @@ import (
 	configcmd "github.com/dolthub/cli/pkg/cmd/config"
 	"github.com/dolthub/cli/pkg/cmd/db"
 	"github.com/dolthub/cli/pkg/cmd/generatedocs"
-	"github.com/dolthub/cli/pkg/cmd/operation"
+	"github.com/dolthub/cli/pkg/cmd/job"
 	"github.com/dolthub/cli/pkg/cmd/pr"
 	"github.com/dolthub/cli/pkg/cmd/release"
 	"github.com/dolthub/cli/pkg/cmd/sql"
@@ -33,7 +33,7 @@ func NewCmdRoot(f *cmdutil.Factory) *cobra.Command {
 		return &cmdutil.FlagError{Err: err}
 	})
 
-	cmd.AddCommand(api.NewCmdAPI(f, nil), auth.NewCmdAuth(f), branch.NewCmdBranch(f), browse.NewCmdBrowse(f, nil), completion.NewCmdCompletion(), configcmd.NewCmdConfig(f), db.NewCmdDB(f), operation.NewCmdOperation(f), pr.NewCmdPR(f), release.NewCmdRelease(f), sql.NewCmdSQL(f, nil), tag.NewCmdTag(f), table.NewCmdTable(f), version.NewCmdVersion(f, nil))
+	cmd.AddCommand(api.NewCmdAPI(f, nil), auth.NewCmdAuth(f), branch.NewCmdBranch(f), browse.NewCmdBrowse(f, nil), completion.NewCmdCompletion(), configcmd.NewCmdConfig(f), db.NewCmdDB(f), job.NewCmdJob(f), pr.NewCmdPR(f), release.NewCmdRelease(f), sql.NewCmdSQL(f, nil), tag.NewCmdTag(f), table.NewCmdTable(f), version.NewCmdVersion(f, nil))
 	cmd.AddCommand(generatedocs.NewCmdGenerateDocs(f, func() *cobra.Command {
 		return NewCmdRoot(&cmdutil.Factory{AppVersion: f.AppVersion, IO: f.IO})
 	}))

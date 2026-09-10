@@ -39,7 +39,7 @@ func authenticatedOptions(t *testing.T, operation dolthub.Operation) (*Options, 
 	}, client, builder
 }
 
-func TestViewFailedOperationSucceedsAndRendersError(t *testing.T) {
+func TestViewFailedJobSucceedsAndRendersError(t *testing.T) {
 	op := dolthub.Operation{ID: "id", Type: dolthub.OperationFork, Status: dolthub.OperationFailed, CreatedAt: time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC), Error: &dolthub.OperationError{Code: "FAILED", Title: "Failed"}}
 	opts, client, out := authenticatedOptions(t, op)
 	if err := viewRun(context.Background(), opts); err != nil {
