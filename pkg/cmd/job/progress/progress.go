@@ -14,7 +14,7 @@ type Reporter struct {
 }
 
 func New(streams *iostreams.IOStreams, id string) *Reporter {
-	return &Reporter{streams: streams, id: id}
+	return &Reporter{streams: streams, id: dolthub.ShortOperationID(id)}
 }
 
 func (r *Reporter) Start() {
@@ -33,7 +33,7 @@ func (r *Reporter) Observe(operation dolthub.Operation) {
 	if r == nil || r.streams == nil || !r.streams.IsStderrTTY() {
 		return
 	}
-	id := operation.ID
+	id := dolthub.ShortOperationID(operation.ID)
 	if id == "" {
 		id = r.id
 	}

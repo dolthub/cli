@@ -74,6 +74,8 @@ dh sql --write --db OWNER/DATABASE --branch feature/update \
 
 Write commands wait for completion and display job status by default.
 Pass `--no-wait` to print the accepted job reference immediately.
+Job IDs in tables, progress, and JSON output use the UUID rather than the
+fully qualified resource name. The `href` field remains the full polling URL.
 
 ## Table imports
 

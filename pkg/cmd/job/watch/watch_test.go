@@ -34,7 +34,7 @@ func TestWatchStructuredSuccess(t *testing.T) {
 		o.Config = func() (config.Config, error) { return authenticatedConfig(), nil }
 		o.LookupEnv = func(string) (string, bool) { return "token", true }
 		o.wait = func(context.Context, string) (dolthub.Operation, error) {
-			return dolthub.Operation{ID: "a/b", Status: dolthub.OperationSucceeded}, nil
+			return dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Status: dolthub.OperationSucceeded}, nil
 		}
 		return watchRun(context.Background(), o)
 	})
@@ -42,7 +42,7 @@ func TestWatchStructuredSuccess(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), `"id":"a/b"`) || !strings.Contains(out.String(), `"status":"succeeded"`) {
+	if !strings.Contains(out.String(), `"id":"716a6b3f-4bd4-432e-b7ae-87bead012a3f"`) || !strings.Contains(out.String(), `"status":"succeeded"`) {
 		t.Fatal(out.String())
 	}
 }

@@ -76,10 +76,10 @@ func mergeRun(ctx context.Context, o *Options) error {
 	}
 	if o.NoWait {
 		if o.Exporter != nil {
-			return o.Exporter.Write(o.IO, ref)
+			return o.Exporter.Write(o.IO, ref.ForDisplay())
 		}
 		t := tableprinter.New(o.IO, "ID", "HREF")
-		_ = t.AddRow(ref.ID, ref.Href)
+		_ = t.AddRow(dolthub.ShortOperationID(ref.ID), ref.Href)
 		return t.Render()
 	}
 	wait := o.wait
@@ -96,7 +96,7 @@ func mergeRun(ctx context.Context, o *Options) error {
 	}
 	var renderErr error
 	if o.Exporter != nil {
-		renderErr = o.Exporter.Write(o.IO, operation)
+		renderErr = o.Exporter.Write(o.IO, operation.ForDisplay())
 	} else {
 		renderErr = viewcmd.RenderHuman(o.IO, operation)
 	}

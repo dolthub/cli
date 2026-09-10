@@ -61,13 +61,13 @@ func TestImportFlow(t *testing.T) {
 						t.Errorf("import request %#v", body)
 					}
 					w.WriteHeader(202)
-					_ = json.NewEncoder(w).Encode(map[string]any{"data": dolthub.OperationRef{ID: "job", Href: server.URL + "/api/v2/operations/job"}})
+					_ = json.NewEncoder(w).Encode(map[string]any{"data": dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: server.URL + "/api/v2/operations/job"}})
 				case "/api/v2/operations/job":
 					status := dolthub.OperationSucceeded
 					if mode == "failed" {
 						status = dolthub.OperationFailed
 					}
-					_ = json.NewEncoder(w).Encode(map[string]any{"data": dolthub.Operation{ID: "job", Type: dolthub.OperationImport, Status: status}})
+					_ = json.NewEncoder(w).Encode(map[string]any{"data": dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationImport, Status: status}})
 				default:
 					t.Errorf("unexpected request %s", r.URL.Path)
 					w.WriteHeader(404)
@@ -110,7 +110,7 @@ func TestImportFlow(t *testing.T) {
 			if len(calls) != expected {
 				t.Fatalf("calls %v", calls)
 			}
-			if mode != "upload-failed" && !strings.Contains(out.String(), `"id":"job"`) {
+			if mode != "upload-failed" && !strings.Contains(out.String(), `"id":"716a6b3f-4bd4-432e-b7ae-87bead012a3f"`) {
 				t.Errorf("output %s", out.String())
 			}
 		})

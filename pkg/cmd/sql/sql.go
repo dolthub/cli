@@ -304,10 +304,10 @@ func runWrite(ctx context.Context, o *Options, c apiClient, r repository.Reposit
 	}
 	if o.NoWait {
 		if o.Exporter != nil {
-			return o.Exporter.Write(o.IO, ref)
+			return o.Exporter.Write(o.IO, ref.ForDisplay())
 		}
 		table := tableprinter.New(o.IO, "ID", "HREF")
-		_ = table.AddRow(ref.ID, ref.Href)
+		_ = table.AddRow(dolthub.ShortOperationID(ref.ID), ref.Href)
 		return table.Render()
 	}
 	wait := o.wait
@@ -324,7 +324,7 @@ func runWrite(ctx context.Context, o *Options, c apiClient, r repository.Reposit
 	}
 	var renderErr error
 	if o.Exporter != nil {
-		renderErr = o.Exporter.Write(o.IO, operation)
+		renderErr = o.Exporter.Write(o.IO, operation.ForDisplay())
 	} else {
 		renderErr = viewcmd.RenderHuman(o.IO, operation)
 	}

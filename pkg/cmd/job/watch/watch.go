@@ -89,7 +89,7 @@ func watchRun(ctx context.Context, o *Options) error {
 	}
 	var renderErr error
 	if o.Exporter != nil {
-		renderErr = o.Exporter.Write(o.IO, operation)
+		renderErr = o.Exporter.Write(o.IO, operation.ForDisplay())
 	} else {
 		renderErr = viewcmd.RenderHuman(o.IO, operation)
 	}

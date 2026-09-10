@@ -98,20 +98,20 @@ func TestReadStatusAndMalformedRowsFail(t *testing.T) {
 
 func TestWriteDefaultsFromBranchAndNoWait(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
-	c := &fakeClient{ref: dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"}}
+	c := &fakeClient{ref: dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"}}
 	o := &Options{IO: io, ResolveRepository: resolve, Query: "insert into t values (1)", Write: true, Branch: "main", NoWait: true, client: c}
 	if err := sqlRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if c.writeRequest.FromBranch != "main" || c.writeRequest.ToBranch != "main" || !strings.Contains(out.String(), "job/1") {
+	if c.writeRequest.FromBranch != "main" || c.writeRequest.ToBranch != "main" || !strings.Contains(out.String(), "716a6b3f-4bd4-432e-b7ae-87bead012a3f\thttps://example.test/op/1") {
 		t.Fatalf("request = %#v, stdout = %q", c.writeRequest, out.String())
 	}
 }
 
 func TestWriteWaitFailureIsRendered(t *testing.T) {
 	io, _, out, _ := iostreams.NewTest()
-	failed := dolthub.Operation{ID: "job/1", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationFailed}
-	c := &fakeClient{ref: dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"}}
+	failed := dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationFailed}
+	c := &fakeClient{ref: dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"}}
 	o := &Options{IO: io, ResolveRepository: resolve, Query: "delete from t", Write: true, Branch: "feature", FromBranch: "main", client: c, wait: func(context.Context, dolthub.OperationRef) (dolthub.Operation, error) {
 		return failed, &operationwaiter.FailedError{Operation: failed}
 	}}
@@ -126,14 +126,14 @@ func TestWriteReportsStatusInTTY(t *testing.T) {
 	io, _, _, errOut := iostreams.NewTest()
 	io.SetStderrTTY(true)
 	c := &fakeClient{
-		ref:       dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"},
-		operation: dolthub.Operation{ID: "job/1", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationSucceeded},
+		ref:       dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"},
+		operation: dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationSQLWrite, Status: dolthub.OperationSucceeded},
 	}
 	o := &Options{IO: io, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
 	if err := sqlRun(context.Background(), o); err != nil {
 		t.Fatal(err)
 	}
-	if got := errOut.String(); !strings.Contains(got, "Waiting for job job/1: succeeded") {
+	if got := errOut.String(); !strings.Contains(got, "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: succeeded") {
 		t.Fatalf("stderr = %q", got)
 	}
 }
@@ -145,15 +145,15 @@ func TestWriteFinishesProgressBeforeRendering(t *testing.T) {
 			streams.ErrOut = output
 			streams.SetStderrTTY(true)
 			c := &fakeClient{
-				ref:       dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"},
-				operation: dolthub.Operation{ID: "job/1", Type: dolthub.OperationSQLWrite, Status: status},
+				ref:       dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"},
+				operation: dolthub.Operation{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Type: dolthub.OperationSQLWrite, Status: status},
 			}
 			o := &Options{IO: streams, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
 			err := sqlRun(context.Background(), o)
 			if (err != nil) != (status == dolthub.OperationFailed) {
 				t.Fatalf("error = %v", err)
 			}
-			if !strings.Contains(output.String(), "Waiting for job job/1: "+string(status)+"\nID\tjob/1\n") {
+			if !strings.Contains(output.String(), "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f: "+string(status)+"\nID\t716a6b3f-4bd4-432e-b7ae-87bead012a3f\n") {
 				t.Fatalf("combined output = %q", output.String())
 			}
 		})
@@ -165,7 +165,7 @@ func TestWritePollingErrorDoesNotRenderEmptyJob(t *testing.T) {
 	streams.SetStderrTTY(true)
 	pollErr := &dolthub.APIError{Status: 404, Method: "GET", Path: "/api/v2/operations/job/1", Detail: "no such repository"}
 	c := &fakeClient{
-		ref:     dolthub.OperationRef{ID: "job/1", Href: "https://example.test/op/1"},
+		ref:     dolthub.OperationRef{ID: "repositoryOwners/dolthub/repositories/people/jobs/716a6b3f-4bd4-432e-b7ae-87bead012a3f", Href: "https://example.test/op/1"},
 		pollErr: pollErr,
 	}
 	o := &Options{IO: streams, ResolveRepository: resolve, Query: "update t set n=1", Write: true, Branch: "main", client: c}
@@ -175,7 +175,7 @@ func TestWritePollingErrorDoesNotRenderEmptyJob(t *testing.T) {
 	if output.Len() != 0 {
 		t.Fatalf("unexpected job output = %q", output.String())
 	}
-	if got := errOutput.String(); got != "Waiting for job job/1...\n" {
+	if got := errOutput.String(); got != "Waiting for job 716a6b3f-4bd4-432e-b7ae-87bead012a3f...\n" {
 		t.Fatalf("stderr = %q", got)
 	}
 }
