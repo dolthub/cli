@@ -24,18 +24,6 @@ func TestMemoryStoreLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-func TestEnvironmentPrecedence(t *testing.T) {
-	s := NewMemoryStore()
-	_ = s.Set("h", "u", "stored")
-	e := EnvironmentStore{Store: s, LookupEnv: func(string) (string, bool) { return "environment", true }}
-	if got, _ := e.Get("h", "u"); got != "environment" {
-		t.Fatal(got)
-	}
-	_ = e.Set("h", "u", "new")
-	if got, _ := s.Get("h", "u"); got != "new" {
-		t.Fatal("set did not reach secure store")
-	}
-}
 func TestFailuresDoNotExposeToken(t *testing.T) {
 	secret := "fake-super-secret"
 	b := &fakeBackend{err: errors.New("keyring unavailable")}

@@ -17,11 +17,6 @@ type IOStreams struct {
 	stderrTTYOverride *bool
 }
 
-// System returns streams connected to the current process.
-func System() *IOStreams {
-	return New(os.Stdin, os.Stdout, os.Stderr)
-}
-
 // New returns streams backed by the supplied readers and writers.
 func New(in io.Reader, out, errOut io.Writer) *IOStreams {
 	return &IOStreams{In: in, Out: out, ErrOut: errOut}
