@@ -1,1 +1,1 @@
-internal/docgen/testdata/* text eol=lf
+internal/docgen/testdata/** text eol=lf
